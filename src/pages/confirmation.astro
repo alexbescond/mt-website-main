@@ -1,0 +1,90 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Base title="Le voyage de Tétine" minimal>
+  <section class="wrap status-page">
+    <Icon name="plane" size={48} />
+    <span class="eyebrow" id="status-label">
+      LE VOYAGE DE TÉTINE
+    </span>
+    <h1 id="status-title">
+      Un instant,
+      <br />
+      <em>on vérifie le billet.</em>
+    </h1>
+    <p id="status-copy" role="status">
+      Nous vérifions la confirmation de votre paiement.
+    </p>
+    <p id="order-reference"></p>
+    <button id="retry-status" class="button button-secondary" hidden>
+      Vérifier à nouveau
+    </button>
+    <a class="button" href="/">
+      Retour aux aventures <Icon name="arrow" size={18} />
+    </a>
+    <noscript>
+      <p>Activez JavaScript pour vérifier l’état de votre commande.</p>
+    </noscript>
+  </section>
+  <script>
+    const title = document.querySelector("#status-title")!;
+    const copy = document.querySelector("#status-copy")!;
+    const retry = document.querySelector<HTMLButtonElement>("#retry-status")!;
+    let attempts = 0;
+    async function check() {
+      retry.hidden = true;
+      if (new URLSearchParams(location.search).get("demo") === "1") {
+        title.textContent = "Le voyage est prêt à être imaginé.";
+        document.querySelector("#status-label")!.textContent =
+          "DÉMONSTRATION TERMINÉE";
+        copy.textContent =
+          "Vous avez parcouru toutes les étapes ! Aucun paiement, aucune commande et aucun envoi de photos n’ont été effectués.";
+        return;
+      }
+      try {
+        const response = await fetch("/api/order-status");
+        const data = (await response.json()) as {
+          status?: string;
+          reference?: string;
+        };
+        if (!response.ok) throw new Error("Commande introuvable");
+        if (data.status === "paid") {
+          title.textContent = "Le grand voyage peut commencer.";
+          copy.textContent =
+            "Votre paiement est confirmé. Votre commande est enregistrée pour la préparation de votre livre personnalisé.";
+          document.querySelector("#order-reference")!.textContent =
+            `Référence : ${data.reference}`;
+          return;
+        }
+        if (data.status === "expired") {
+          title.textContent = "Ce billet a expiré.";
+          copy.textContent =
+            "Cette session de paiement a expiré. Vous pouvez préparer une nouvelle commande.";
+          return;
+        }
+        title.textContent = "Votre confirmation arrive.";
+        copy.textContent =
+          "Le paiement n’est pas encore confirmé. Ne repassez pas commande : la validation peut prendre quelques instants.";
+        if (++attempts < 8) {
+          setTimeout(() => {
+            void check();
+          }, 3000);
+        } else {
+          retry.hidden = false;
+        }
+      } catch {
+        title.textContent = "Retrouvons votre voyage.";
+        copy.textContent =
+          "Nous ne pouvons pas consulter cette commande dans ce navigateur. Si vous avez payé, conservez le reçu Stripe et ne repassez pas commande.";
+        retry.hidden = false;
+      }
+    }
+    retry.addEventListener("click", () => {
+      attempts = 0;
+      void check();
+    });
+    void check();
+  </script>
+</Base>

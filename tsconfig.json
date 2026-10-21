@@ -1,0 +1,6 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": { "types": ["node"], "skipLibCheck": true },
+  "include": [".astro/types.d.ts", "worker-configuration.d.ts", "src/**/*", "tests/**/*", "*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

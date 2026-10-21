@@ -1,0 +1,47 @@
+---
+interface Props {
+  light?: boolean;
+}
+const { light = false } = Astro.props;
+---
+
+<a
+  class:list={["brand", { light }]}
+  href="/"
+  aria-label="Les vacances de ma tétine — accueil"
+>
+  <svg
+    width="44"
+    height="48"
+    viewBox="0 0 44 48"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M8 14c0-8 8-11 14-7 6-4 14-1 14 7 0 10-7 17-14 17S8 24 8 14Z"
+      fill="currentColor"
+      opacity=".14"
+    />
+    <path
+      d="M13 18c-2-7 2-12 9-12s11 5 9 12M8 19c3-4 25-4 28 0-2 8-8 11-14 11S10 27 8 19Z"
+      stroke="currentColor"
+      stroke-width="2"
+    />
+    <ellipse
+      cx="22"
+      cy="32"
+      rx="7"
+      ry="8"
+      stroke="currentColor"
+      stroke-width="2"
+    />
+    <path d="m36 4 1 4 4 1-4 1-1 4-1-4-4-1 4-1 1-4Z" fill="currentColor" />
+  </svg>
+  <span>
+    Les vacances
+    <br />
+    <strong>
+      de ma tétine<span class="brand-dot">.</span>
+    </strong>
+  </span>
+</a>

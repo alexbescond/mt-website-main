@@ -1,0 +1,386 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import { books, PRICE_LABEL } from "../lib/catalog";
+import "../styles/order.css";
+---
+
+<Base title="Créez son livre personnalisé" minimal>
+  <div class="wrap order-page">
+    <div class="order-heading">
+      <span class="eyebrow">UNE HISTOIRE QUI N’APPARTIENT QU’À LUI</span>
+      <h1>
+        Préparons le voyage
+        <br />
+        de <em>sa tétine.</em>
+      </h1>
+      <p>Les petits détails font les grandes histoires.</p>
+    </div>
+    <div id="mode-notice" class="notice" role="status">
+      Chargement du parcours…
+    </div>
+    <noscript>
+      <p class="notice">
+        Activez JavaScript pour personnaliser votre livre et joindre vos photos.
+      </p>
+    </noscript>
+    <div id="cancel-notice" class="notice" hidden>
+      Le paiement a été interrompu. Aucun paiement n’est confirmé. Vous pouvez
+      reprendre votre commande ci-dessous.
+    </div>
+    <ol class="order-steps" aria-label="Étapes de personnalisation">
+      <li aria-current="step">
+        <span>1</span> Son histoire
+      </li>
+      <li>
+        <span>2</span> La livraison
+      </li>
+      <li>
+        <span>3</span> Le récapitulatif
+      </li>
+    </ol>
+    <div class="order-grid">
+      <form id="order-form" novalidate>
+        <section data-step="0" class="form-panel">
+          <h2 tabindex="-1">Faisons connaissance.</h2>
+          <p class="form-intro">
+            Tout commence par votre petit grand et sa fidèle complice.
+          </p>
+          <fieldset class="destination-field">
+            <legend>Quelle destination pour Tétine ?</legend>
+            <div class="destination-options">
+              {Object.entries(books).map(([id, b]) => (
+                <label class="destination-option">
+                  <input
+                    type="radio"
+                    name="book"
+                    value={id}
+                    checked={id === "tropiques"}
+                  />
+                  <img src={b.image} width="150" height="100" alt="" />
+                  <span>{b.short}</span>
+                  <span class="radio-mark" aria-hidden="true"></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label class="field">
+            Le prénom de votre enfant <span class="required">*</span>
+            <input
+              name="childName"
+              autocomplete="off"
+              maxlength="60"
+              placeholder="Par exemple, Camille"
+              required
+            />
+            <small>Il apparaîtra dans son histoire.</small>
+          </label>
+          <div class="upload-field">
+            <label for="pacifierPhoto">
+              La photo de sa tétine <span class="required">*</span>
+            </label>
+            <p>
+              De face, bien éclairée, sur un fond simple : on veut reconnaître
+              tous ses petits détails.
+            </p>
+            <label class="upload-zone" for="pacifierPhoto">
+              <Icon name="camera" size={28} />
+              <span class="upload-title">Choisir une photo de Tétine</span>
+              <small>JPG, PNG ou WebP · 5 Mo maximum</small>
+              <input
+                id="pacifierPhoto"
+                name="pacifierPhoto"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required
+                aria-describedby="pacifier-error"
+              />
+              <img
+                class="upload-preview"
+                alt="Aperçu de la photo de votre tétine"
+                hidden
+              />
+            </label>
+            <span
+              id="pacifier-error"
+              class="field-error"
+              aria-live="polite"
+            ></span>
+          </div>
+          <div class="upload-field">
+            <label for="childPhoto">
+              La photo de votre enfant <span class="optional">facultatif</span>
+            </label>
+            <p>
+              Pour lui faire une petite place dans le livre, aux côtés de
+              Tétine.
+            </p>
+            <label class="upload-zone upload-compact" for="childPhoto">
+              <Icon name="upload" size={24} />
+              <span class="upload-title">Ajouter son portrait</span>
+              <small>JPG, PNG ou WebP · 5 Mo maximum</small>
+              <input
+                id="childPhoto"
+                name="childPhoto"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-describedby="child-error"
+              />
+              <img
+                class="upload-preview"
+                alt="Aperçu du portrait de votre enfant"
+                hidden
+              />
+            </label>
+            <button type="button" id="remove-child" class="remove-photo" hidden>
+              Retirer le portrait
+            </button>
+            <span
+              id="child-error"
+              class="field-error"
+              aria-live="polite"
+            ></span>
+          </div>
+          <label class="field">
+            Un petit mot pour notre équipe{" "}
+            <span class="optional">facultatif</span>
+            <textarea
+              name="notes"
+              rows="3"
+              maxlength="500"
+              placeholder="Le surnom de sa tétine, une petite habitude, un détail qui compte…"
+            ></textarea>
+          </label>
+          <label class="checkbox-field">
+            <input name="photoConsent" type="checkbox" required />
+            <span>
+              Je suis le parent ou le représentant légal de l’enfant et
+              j’autorise l’utilisation de ces photos uniquement pour créer ce
+              livre.{" "}
+              <a
+                href="/informations#confidentialite"
+                target="_blank"
+                rel="noopener"
+              >
+                En savoir plus sur les photos
+              </a>
+              .
+            </span>
+          </label>
+        </section>
+        <section data-step="1" class="form-panel" hidden>
+          <h2 tabindex="-1">
+            À quelle adresse
+            <br />
+            envoyer son aventure ?
+          </h2>
+          <p class="form-intro">
+            Un livre à recevoir chez vous, puis à lire tout près l’un de
+            l’autre.
+          </p>
+          <div class="field-row">
+            <label class="field">
+              Votre prénom <span class="required">*</span>
+              <input
+                name="firstName"
+                autocomplete="given-name"
+                maxlength="80"
+                required
+              />
+            </label>
+            <label class="field">
+              Votre nom <span class="required">*</span>
+              <input
+                name="lastName"
+                autocomplete="family-name"
+                maxlength="80"
+                required
+              />
+            </label>
+          </div>
+          <label class="field">
+            Votre adresse e-mail <span class="required">*</span>
+            <input
+              name="email"
+              type="email"
+              autocomplete="email"
+              maxlength="254"
+              required
+              placeholder="vous@exemple.fr"
+            />
+            <small>Pour associer votre paiement à votre commande.</small>
+          </label>
+          <label class="field">
+            Adresse de livraison <span class="required">*</span>
+            <input
+              name="address"
+              autocomplete="address-line1"
+              maxlength="150"
+              required
+              placeholder="Numéro et nom de la rue"
+            />
+          </label>
+          <label class="field">
+            Complément d’adresse <span class="optional">facultatif</span>
+            <input
+              name="addressExtra"
+              autocomplete="address-line2"
+              maxlength="150"
+              placeholder="Appartement, bâtiment, étage…"
+            />
+          </label>
+          <div class="field-row">
+            <label class="field">
+              Code postal <span class="required">*</span>
+              <input
+                name="postalCode"
+                autocomplete="postal-code"
+                inputmode="numeric"
+                pattern="[0-9]{5}"
+                maxlength="5"
+                required
+              />
+            </label>
+            <label class="field">
+              Ville <span class="required">*</span>
+              <input
+                name="city"
+                autocomplete="address-level2"
+                maxlength="100"
+                required
+              />
+            </label>
+          </div>
+          <label class="field">
+            Pays
+            <select name="country" autocomplete="country">
+              <option value="FR">France métropolitaine</option>
+            </select>
+            <small>
+              Cette première version propose la livraison en France
+              métropolitaine.
+            </small>
+          </label>
+        </section>
+        <section data-step="2" class="form-panel" hidden>
+          <h2 tabindex="-1">
+            Tout est prêt
+            <br />
+            pour le grand départ.
+          </h2>
+          <p class="form-intro">
+            Un dernier regard avant de laisser la magie commencer.
+          </p>
+          <div class="review-section">
+            <div>
+              <h3>Son histoire</h3>
+              <button type="button" class="edit-button" data-edit="0">
+                Modifier
+              </button>
+            </div>
+            <p id="review-book"></p>
+            <p id="review-child"></p>
+            <div class="review-photos" id="review-photos"></div>
+            <p id="review-notes"></p>
+          </div>
+          <div class="review-section">
+            <div>
+              <h3>La livraison</h3>
+              <button type="button" class="edit-button" data-edit="1">
+                Modifier
+              </button>
+            </div>
+            <p id="review-address"></p>
+            <p id="review-email"></p>
+          </div>
+          <label class="checkbox-field">
+            <input type="checkbox" name="termsConsent" required />
+            <span>
+              J’ai vérifié mes informations et j’accepte les{" "}
+              <a href="/informations#conditions" target="_blank" rel="noopener">
+                conditions de vente
+              </a>{" "}
+              et la{" "}
+              <a
+                href="/informations#confidentialite"
+                target="_blank"
+                rel="noopener"
+              >
+                politique de confidentialité
+              </a>
+              .
+            </span>
+          </label>
+          <p class="payment-note" id="payment-note">
+            La démonstration ne déclenche aucun paiement.
+          </p>
+        </section>
+        <div id="form-error" role="alert" class="form-error" hidden></div>
+        <div class="form-actions">
+          <button
+            type="button"
+            id="previous-step"
+            class="button button-secondary"
+            hidden
+          >
+            ← Retour
+          </button>
+          <button type="submit" id="next-step" class="button" disabled>
+            Continuer <Icon name="arrow" size={18} />
+          </button>
+        </div>
+        <p class="required-note">
+          * Les informations nécessaires à la création de votre livre.
+        </p>
+      </form>
+      <aside class="order-summary">
+        <div class="summary-photo">
+          <img
+            id="summary-image"
+            src={books.tropiques.image}
+            width="600"
+            height="400"
+            alt="Aperçu illustratif de l’aventure choisie"
+          />
+          <span>SON PROCHAIN GRAND VOYAGE</span>
+        </div>
+        <div class="summary-body">
+          <span class="eyebrow">UN EXEMPLAIRE RIEN QU’À LUI</span>
+          <h2 id="summary-title">{books.tropiques.title}</h2>
+          <p id="summary-child">L’histoire de sa tétine</p>
+          <ul>
+            <li>
+              <Icon name="check" size={17} /> Sa propre tétine dans l’histoire
+            </li>
+            <li>
+              <Icon name="check" size={17} /> Personnalisé avec son prénom
+            </li>
+            <li>
+              <Icon name="check" size={17} /> Un livre papier à garder
+            </li>
+          </ul>
+          <div class="summary-line">
+            <span>Votre livre</span>
+            <span>{PRICE_LABEL}</span>
+          </div>
+          <div class="summary-line">
+            <span>Livraison</span>
+            <span>Incluse</span>
+          </div>
+          <div class="summary-total">
+            <span>Total</span>
+            <strong>{PRICE_LABEL}</strong>
+          </div>
+          <span class="price-provisional">
+            Prix provisoire · France métropolitaine
+          </span>
+          <div class="summary-reassurance">
+            <Icon name="lock" size={17} />
+            <span>Photos privées · Paiement via Stripe</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script src="../scripts/order.ts"></script>
+</Base>

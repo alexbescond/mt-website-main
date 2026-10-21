@@ -1,0 +1,42 @@
+{
+  "name": "les-vacances-de-ma-tetine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1",
+    "build": "astro build",
+    "preview": "astro build && wrangler dev --config dist/server/wrangler.json --port 8787",
+    "cf-typegen": "wrangler types --strict-vars=false",
+    "check:types": "npm run cf-typegen && astro check && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run check:types && npm run test && npm run test:e2e",
+    "check:deploy": "node scripts/check-deploy.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply mt-orders --local",
+    "db:migrate:remote": "wrangler d1 migrations apply mt-orders --remote",
+    "deploy:www": "npm run check && npm run build && npm run check:deploy && npm run db:migrate:remote && wrangler deploy --config dist/server/wrangler.json",
+    "preview:www": "npm run build && wrangler versions upload --config dist/server/wrangler.json"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.3.0",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource-variable/fraunces": "^5.2.8",
+    "astro": "^7.4.0",
+    "stripe": "^23.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@cloudflare/vitest-plugin": "^1.4.4",
+    "@cloudflare/workers-types": "^5.20261016.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.0.0",
+    "sharp": "^0.35.5",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.151.1"
+  }
+}
