@@ -1,0 +1,102 @@
+---
+import "@fontsource-variable/dm-sans";
+import "@fontsource-variable/fraunces";
+import "../styles/site.css";
+import Logo from "../components/Logo.astro";
+import Icon from "../components/Icon.astro";
+interface Props {
+  title?: string;
+  description?: string;
+  minimal?: boolean;
+}
+const {
+  title = "Une petite tétine. Une grande aventure.",
+  description = "Transformez le départ de la tétine en une belle aventure. Un livre personnalisé avec la vraie tétine de votre enfant, sous les tropiques ou au ski.",
+  minimal = false,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | Les vacances de ma tétine</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#fbf8f0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <meta
+      property="og:title"
+      content={`${title} | Les vacances de ma tétine`}
+    />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta
+      property="og:image"
+      content={new URL("/images/tetine-transat.webp", Astro.site)}
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">
+      Aller au contenu
+    </a>
+    <div class="announcement">
+      <Icon name="plane" size={14} /> De petits au revoir, de grandes aventures.
+    </div>
+    <header class="site-header wrap">
+      <Logo />
+      {!minimal && (
+        <nav aria-label="Navigation principale">
+          <a href="/#aventures">Les aventures</a>
+          <a href="/#comment-ca-marche">Comment ça marche</a>
+          <a href="/#notre-histoire">Notre petite histoire</a>
+          <a href="/#questions">Questions fréquentes</a>
+        </nav>
+      )}
+      <a
+        href={minimal ? "/#aventures" : "/personnaliser"}
+        class={minimal ? "back-link" : "button button-small"}
+      >
+        {minimal ? "← Les aventures" : "Créer mon livre"}
+        {!minimal && <Icon name="arrow" size={17} />}
+      </a>
+    </header>
+    <main id="contenu">
+      <slot />
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-top">
+        <div>
+          <Logo />
+          <p>
+            Les tétines aussi ont droit
+            <br />à leur grande aventure.
+          </p>
+        </div>
+        <div class="footer-links">
+          <a href="/#aventures">Les aventures</a>
+          <a href="/#comment-ca-marche">Comment ça marche</a>
+          <a href="/#questions">Questions fréquentes</a>
+        </div>
+        <div class="footer-note">
+          <Icon name="heart" />
+          <p>
+            Imaginé avec tendresse,
+            <br />
+            pour grandir à son rythme.
+          </p>
+        </div>
+      </div>
+      <div class="wrap footer-bottom">
+        <span>© {new Date().getFullYear()} Les vacances de ma tétine</span>
+        <div>
+          <a href="/informations#mentions">Mentions légales</a>
+          <a href="/informations#confidentialite">Confidentialité</a>
+          <a href="/informations#conditions">Conditions de vente</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

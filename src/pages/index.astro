@@ -1,0 +1,402 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import { books, PRICE_LABEL } from "../lib/catalog";
+const faqs = [
+  [
+    "Comment la tétine de mon enfant apparaît-elle dans le livre ?",
+    "Vous nous envoyez une photo de sa tétine. Sa forme, sa couleur et ses petits détails deviennent le point de départ des images de son aventure. Les visuels de ce site sont des exemples : votre livre sera créé à partir de votre propre photo.",
+  ],
+  [
+    "La photo de mon enfant est-elle obligatoire ?",
+    "Non, seule la photo de la tétine est nécessaire. Le prénom de votre enfant suffit pour lui adresser l’histoire. Vous pouvez ajouter son portrait si vous souhaitez le faire apparaître dans le livre.",
+  ],
+  [
+    "Dois-je vous envoyer la vraie tétine ?",
+    "Non, une photo suffit ! Vous gardez la tétine et choisissez, en famille, le moment et la façon de lui dire au revoir.",
+  ],
+  [
+    "Que vais-je recevoir ?",
+    "Un livre papier personnalisé, livré à l’adresse indiquée. Le prix provisoire est de 29,90 €, livraison en France métropolitaine incluse pour cette version du projet. Le format final et le délai de fabrication seront précisés avant l’ouverture des ventes.",
+  ],
+  [
+    "Est-ce le bon moment pour arrêter la tétine ?",
+    "Chaque enfant a son rythme. Ce livre est une histoire à partager, pour mettre des mots et des images sur cette étape. Il ne promet pas un arrêt immédiat : vous choisissez le bon moment pour votre famille.",
+  ],
+  [
+    "Que deviennent les photos envoyées ?",
+    "Elles servent uniquement à préparer votre livre et restent dans un stockage privé. La version de démonstration ne transmet aucune photo. Lors de l’ouverture des commandes, les photos seront supprimées automatiquement au plus tard 90 jours après leur envoi.",
+  ],
+];
+---
+
+<Base>
+  <section class="hero wrap">
+    <div class="hero-copy">
+      <span class="eyebrow">
+        <span class="tiny-sun">✳</span> GRANDIR, UNE HISTOIRE À LA FOIS
+      </span>
+      <h1>
+        Une petite tétine.
+        <br />
+        Une{" "}
+        <em>
+          grande
+          <br class="desktop-break" /> aventure.
+        </em>
+      </h1>
+      <p>
+        Et si, au lieu de disparaître, sa tétine partait en vacances ? Un livre
+        personnalisé pour transformer les petits au revoir en jolis souvenirs.
+      </p>
+      <a class="button" href="#aventures">
+        Choisir son aventure <Icon name="arrow" size={19} />
+      </a>
+      <div class="hero-caption">
+        <Icon name="heart" size={17} /> Sa vraie tétine. Son prénom. Une
+        histoire rien qu’à lui.
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="postcard">
+        <img
+          src="/images/tetine-transat.webp"
+          width="1200"
+          height="800"
+          alt="Une tétine prune se repose sur un transat face à un lagon turquoise"
+          fetchpriority="high"
+        />
+        <div class="postcard-caption">
+          <span>Bons baisers des tropiques !</span>
+          <Icon name="heart" size={22} />
+        </div>
+      </div>
+      <div class="travel-stamp">
+        <span>LE DÉBUT D’UNE</span>
+        <Icon name="sun" size={35} />
+        <span>BELLE HISTOIRE</span>
+      </div>
+      <div class="hero-note">
+        « Je pense à toi.
+        <br />
+        Et je m’amuse beaucoup ! »
+        <svg
+          width="68"
+          height="48"
+          viewBox="0 0 68 48"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M3 5c25-8 55 3 50 33m-10-6 11 11 10-12"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+        </svg>
+      </div>
+      <span class="art-star" aria-hidden="true">
+        ✧
+      </span>
+    </div>
+  </section>
+  <div class="trust-band">
+    <div class="wrap">
+      <span>
+        <Icon name="camera" /> Avec sa propre tétine
+      </span>
+      <span>
+        <Icon name="book" /> Un vrai livre à garder
+      </span>
+      <span>
+        <Icon name="heart" /> Une séparation tout en douceur
+      </span>
+      <span>
+        <Icon name="lock" /> Des photos privées
+      </span>
+    </div>
+  </div>
+  <section id="aventures" class="section wrap adventures">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">SON PREMIER GRAND VOYAGE</span>
+        <h2>Où partira sa tétine ?</h2>
+      </div>
+      <p>
+        Deux destinations, mille petits bonheurs.
+        <br />
+        Et toujours la même héroïne : sa tétine.
+      </p>
+    </div>
+    <div class="book-grid">
+      {Object.entries(books).map(([id, book]) => (
+        <article class={`book-card ${book.color}`}>
+          <div class="book-image">
+            <img
+              src={book.image}
+              alt={
+                id === "ski"
+                  ? "Tétine découvre les montagnes enneigées sur ses skis"
+                  : "Tétine profite du soleil sous les tropiques"
+              }
+              width="900"
+              height="600"
+              loading="lazy"
+            />
+            <span class="book-tag">
+              <Icon name={id === "ski" ? "snow" : "sun"} size={16} />
+              {id === "ski" ? "L’appel des sommets" : "Cap sur le soleil"}
+            </span>
+            <button
+              class="preview-button"
+              data-preview={id}
+              aria-label={`Feuilleter ${book.title}`}
+            >
+              <Icon name="book" size={17} /> Feuilleter
+            </button>
+          </div>
+          <div class="book-info">
+            <span class="eyebrow">{book.eyebrow}</span>
+            <h3>{book.title}</h3>
+            <p>{book.description}</p>
+            <div class="book-purchase">
+              <div class="price">
+                {PRICE_LABEL}
+                <span>Livre personnalisé · prix provisoire</span>
+              </div>
+              <a
+                href={`/personnaliser?aventure=${id}`}
+                class="button button-small"
+              >
+                Je choisis cette aventure <Icon name="arrow" size={17} />
+              </a>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+    <p class="quiet-note">
+      Les images vous donnent un avant-goût. La star de votre livre sera la
+      tétine de votre enfant.
+    </p>
+  </section>
+  <section id="comment-ca-marche" class="how-section">
+    <div class="wrap section">
+      <div class="center-heading">
+        <span class="eyebrow">UN PEU DE VOUS, BEAUCOUP DE MAGIE</span>
+        <h2>Son histoire commence avec vous.</h2>
+        <p>Quelques minutes pour préparer un voyage qu’il n’oubliera pas.</p>
+      </div>
+      <div class="steps">
+        <article>
+          <div class="step-icon">
+            <Icon name="plane" size={31} />
+            <span>01</span>
+          </div>
+          <h3>Choisissez le voyage</h3>
+          <p>
+            Plutôt palmiers ou flocons ?<br />
+            Trouvez l’aventure qui fera rêver votre enfant.
+          </p>
+        </article>
+        <article>
+          <div class="step-icon">
+            <Icon name="camera" size={31} />
+            <span>02</span>
+          </div>
+          <h3>Présentez-nous Tétine</h3>
+          <p>
+            Une photo de sa tétine, son prénom et, si vous le souhaitez, une
+            photo de votre enfant.
+          </p>
+        </article>
+        <article>
+          <div class="step-icon">
+            <Icon name="book" size={31} />
+            <span>03</span>
+          </div>
+          <h3>Ouvrez un nouveau chapitre</h3>
+          <p>
+            Recevez votre livre à la maison.
+            <br />
+            Installez-vous ensemble. L’aventure peut commencer.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+  <section id="notre-histoire" class="story-section wrap section">
+    <div class="story-photo">
+      <img
+        src="/images/tetine-hamac.webp"
+        width="900"
+        height="600"
+        alt="Tétine fait une sieste dans un hamac, entre deux palmiers"
+        loading="lazy"
+      />
+      <span class="story-label">
+        <Icon name="heart" size={18} /> Les souvenirs, eux, restent.
+      </span>
+    </div>
+    <div class="story-copy">
+      <span class="eyebrow">
+        LES PETITS AU REVOIR MÉRITENT UNE BELLE HISTOIRE
+      </span>
+      <h2>
+        Elle ne disparaît pas.
+        <br />
+        <em>Elle part à l’aventure.</em>
+      </h2>
+      <p>
+        Une tétine, c’est un petit bout de réconfort. Une complice des siestes,
+        des chagrins et des gros câlins. Lui dire au revoir, ce n’est pas rien.
+      </p>
+      <p>
+        Alors, on a imaginé une autre suite à son histoire. Une tétine qui prend
+        l’avion, découvre la mer et envoie de ses nouvelles.{" "}
+        <strong>Sa tétine, celle qu’il reconnaît au premier regard.</strong>
+      </p>
+      <p>
+        Un livre à lire ensemble, autant de fois qu’il en aura envie. Pour
+        laisser une jolie place aux souvenirs… et un peu plus de place pour
+        grandir.
+      </p>
+      <span class="handwritten">Un petit départ. Un grand pas.</span>
+    </div>
+  </section>
+  <section class="travel-gallery section">
+    <div class="wrap">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DES NOUVELLES DE TÉTINE</span>
+          <h2>La vie est belle, en vacances.</h2>
+        </div>
+        <button class="text-button" data-preview="tropiques">
+          Ouvrir le carnet de voyage <Icon name="arrow" size={18} />
+        </button>
+      </div>
+      <div class="gallery-grid">
+        <figure>
+          <img
+            src="/images/tetine-avion.webp"
+            width="600"
+            height="400"
+            alt="Tétine et ses amis sont prêts pour le décollage"
+            loading="lazy"
+          />
+          <figcaption>1. Prête pour le grand départ.</figcaption>
+        </figure>
+        <figure>
+          <img
+            src="/images/tetine-paddle.webp"
+            width="600"
+            height="400"
+            alt="La tétine prune explore le lagon en paddle"
+            loading="lazy"
+          />
+          <figcaption>2. Un océan de découvertes.</figcaption>
+        </figure>
+        <figure>
+          <img
+            src="/images/tetine-chateau.webp"
+            width="600"
+            height="400"
+            alt="Tétine construit un château de sable sur la plage"
+            loading="lazy"
+          />
+          <figcaption>3. Des souvenirs plein la valise.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+  <section id="questions" class="faq-section wrap section">
+    <div>
+      <span class="eyebrow">ON VOUS RACONTE TOUT</span>
+      <h2>
+        Les petites
+        <br />
+        questions.
+      </h2>
+      <p>
+        Parce qu’une grande aventure
+        <br />
+        se prépare en toute confiance.
+      </p>
+      <Icon name="sparkles" size={45} />
+    </div>
+    <div class="faq-list">
+      {faqs.map(([q, a]) => (
+        <details>
+          <summary>
+            {q}
+            <span aria-hidden="true">+</span>
+          </summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+  <section class="last-call wrap">
+    <Icon name="plane" size={35} />
+    <span class="eyebrow">PROCHAIN DÉPART : UNE NOUVELLE ÉTAPE</span>
+    <h2>
+      Et si son au revoir
+      <br />
+      devenait un <em>« bon voyage »</em> ?
+    </h2>
+    <a class="button" href="/personnaliser">
+      Créer son histoire <Icon name="arrow" size={19} />
+    </a>
+    <span class="last-call-note">Un livre unique, pour votre petit grand.</span>
+  </section>
+  <dialog id="book-preview" aria-labelledby="preview-title">
+    <div class="preview-top">
+      <span class="eyebrow">UN APERÇU DE SON AVENTURE</span>
+      <button
+        id="close-preview"
+        class="icon-button"
+        aria-label="Fermer l’aperçu"
+      >
+        <Icon name="close" />
+      </button>
+    </div>
+    <h2 id="preview-title">Le carnet de Tétine</h2>
+    <div class="preview-spread">
+      <img
+        id="preview-image"
+        src="/images/tetine-avion.webp"
+        alt=""
+        width="900"
+        height="600"
+      />
+      <div>
+        <span id="preview-chapter" class="eyebrow"></span>
+        <h3 id="preview-subtitle"></h3>
+        <p id="preview-text"></p>
+      </div>
+    </div>
+    <div class="preview-controls">
+      <button
+        id="preview-prev"
+        class="icon-button"
+        aria-label="Page précédente"
+      >
+        ←
+      </button>
+      <span id="preview-counter" aria-live="polite"></span>
+      <button id="preview-next" class="icon-button" aria-label="Page suivante">
+        →
+      </button>
+    </div>
+    <p class="quiet-note">
+      Extrait illustratif. Votre histoire sera personnalisée avec vos photos.
+    </p>
+    <a
+      id="preview-create"
+      class="button"
+      href="/personnaliser?aventure=tropiques"
+    >
+      Personnaliser cette aventure <Icon name="arrow" size={17} />
+    </a>
+  </dialog>
+  <script src="../scripts/home.ts"></script>
+</Base>

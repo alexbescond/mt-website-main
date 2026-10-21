@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Base title="Cette page est partie en vacances" minimal>
+  <section class="wrap status-page">
+    <Icon name="pin" size={48} />
+    <span class="eyebrow">ERREUR 404 · PETIT DÉTOUR</span>
+    <h1>
+      Cette page est partie
+      <br />
+      <em>en vacances.</em>
+    </h1>
+    <p>Retrouvons le chemin des belles histoires.</p>
+    <a href="/" class="button">
+      Retour aux aventures <Icon name="arrow" size={18} />
+    </a>
+  </section>
+</Base>

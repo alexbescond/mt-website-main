@@ -1,0 +1,4 @@
+# Duplicate this file as .dev.vars only for manual Stripe sandbox integration.
+# The demo works without any credentials. Never commit real secret values.
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
