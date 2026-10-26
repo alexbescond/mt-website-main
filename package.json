@@ -36,7 +36,7 @@
     "@types/node": "^24.0.0",
     "sharp": "^0.35.5",
     "typescript": "~5.9.3",
-    "vitest": "^4.1.11",
+    "vitest": "^4.1.12",
     "wrangler": "^4.151.1"
   }
 }
