@@ -22,7 +22,7 @@ const tropical = [
     "tetine-paddle",
     "Les pieds dans l’eau",
     "Un océan de découvertes",
-    "Sur sa petite planche, Tétine avance doucement. Sous l’eau, des poissons rayés lui montrent le chemin. Elle pense à toi : tu aurais tellement aimé les voir !",
+    "Sur sa petite planche, Tétine avance doucement. Sous l’eau, des poissons rayés lui montrent le chemin. Elle pense à toi : elle a hâte de te raconter sa découverte !",
   ],
   [
     "tetine-plongee",
@@ -76,8 +76,8 @@ document
       pages = ski ? winter : tropical;
       current = 0;
       document.querySelector("#preview-title")!.textContent = ski
-        ? "Tétine va au ski"
-        : "Tétine va sous les tropiques";
+        ? "La tête dans les flocons"
+        : "Sous les cocotiers";
       document.querySelector<HTMLAnchorElement>("#preview-create")!.href =
         `/personnaliser?aventure=${ski ? "ski" : "tropiques"}`;
       render();

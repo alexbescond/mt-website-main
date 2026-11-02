@@ -2,7 +2,9 @@
 import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import schema from "../../migrations/0001_orders.sql?raw";
+import baseSchema from "../../migrations/0001_orders.sql?raw";
+import companionSchema from "../../migrations/0002_companions.sql?raw";
+const schema = baseSchema + "\n" + companionSchema;
 import { api } from "../../src/lib/api";
 import { cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
@@ -31,6 +33,8 @@ function payload() {
   for (const [k, v] of Object.entries({
     attemptId: crypto.randomUUID(),
     book: "tropiques",
+    companion: "tetine",
+    companionName: "",
     childName: "Camille",
     firstName: "Alex",
     lastName: "Exemple",
@@ -53,6 +57,7 @@ function payload() {
       { type: "image/jpeg" },
     ),
   );
+  form.set("childPhoto", form.get("pacifierPhoto")!);
   return form;
 }
 function request(form: FormData, requestOrigin = origin) {
@@ -145,7 +150,8 @@ it("stores private photos and one pending order, fixes the amount and reuses ret
     .first();
   expect(order?.status).toBe("pending");
   expect(order?.amount_cents).toBe(2990);
-  expect(order?.child_key).toBe(null);
+  expect(order?.child_key).toBe(`orders/${id}/child`);
+  expect(order?.companion_type).toBe("tetine");
   expect(await bindings.PHOTOS!.head(`orders/${id}/pacifier`)).not.toBe(null);
   expect((await api(request(form), bindings)).status).toBe(200);
   expect(fetch).toHaveBeenCalledTimes(1);
@@ -343,4 +349,52 @@ it("removes abandoned data after 7 days and paid photos after 90 days", async ()
   expect(paid?.status).toBe("paid");
   expect(paid?.pacifier_key).toBe(null);
   expect(paid?.photos_deleted_at).toBeGreaterThan(0);
+});
+
+it("stores a named doudou and sends only the generic companion title to Stripe", async () => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("companion", "doudou");
+  form.set("companionName", "Lapinou");
+  expect((await api(request(form), bindings)).status).toBe(200);
+  const order = await env.DB.prepare(
+    "SELECT companion_type,companion_name FROM orders WHERE id=?",
+  )
+    .bind(form.get("attemptId"))
+    .first();
+  expect(order).toEqual({
+    companion_type: "doudou",
+    companion_name: "Lapinou",
+  });
+  const sent = new URLSearchParams(String(fetch.mock.calls[0][1]?.body));
+  expect(sent.get("line_items[0][price_data][product_data][name]")).toBe(
+    "Doudou — Sous les cocotiers",
+  );
+  expect(sent.get("cancel_url")).toContain("compagnon=doudou");
+  expect(String(fetch.mock.calls[0][1]?.body)).not.toContain("Lapinou");
+});
+it("rejects an unknown companion and a missing portrait before uploading or contacting Stripe", async () => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("companion", "unknown");
+  expect((await api(request(form), bindings)).status).toBe(400);
+  form.set("companion", "doudou");
+  form.delete("childPhoto");
+  const response = await api(request(form), bindings);
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({
+    error: "Ajoutez une photo de votre enfant.",
+  });
+  expect(fetch).not.toHaveBeenCalled();
+  expect(
+    (await env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first())
+      ?.count,
+  ).toBe(0);
+});
+it("does not reuse a checkout after switching companions", async () => {
+  mockStripe();
+  const form = payload();
+  await api(request(form), bindings);
+  form.set("companion", "doudou");
+  expect((await api(request(form), bindings)).status).toBe(409);
 });

@@ -1,0 +1,64 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import AdventureCards from "../components/AdventureCards.astro";
+import BookPreview from "../components/BookPreview.astro";
+---
+
+<Base title="Les aventures à personnaliser">
+  <section class="wrap page-intro">
+    <span class="eyebrow">LE CATALOGUE DES PETITS EXPLORATEURS</span>
+    <h1>
+      Le prochain chapitre
+      <br />
+      de <em>leur histoire.</em>
+    </h1>
+    <p>
+      Un doudou, une tétine, et tant de mondes à découvrir.
+      <br />
+      Choisissez l’escapade qui ressemble à votre enfant.
+    </p>
+    <span class="page-tag">
+      <Icon name="book" size={17} /> Histoires personnalisées · 2–5 ans
+    </span>
+  </section>
+  <section class="wrap catalogue">
+    <AdventureCards />
+  </section>
+  <section class="wrap section coming-section">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">L’IMAGINATION N’A PAS DE FRONTIÈRES</span>
+        <h2>
+          Et après, <em>on rêve de…</em>
+        </h2>
+      </div>
+      <p>
+        De nouvelles pistes à explorer.
+        <br />
+        Ces aventures ne sont pas encore disponibles.
+      </p>
+    </div>
+    <div class="coming-grid">
+      <article>
+        <Icon name="sparkles" size={32} />
+        <span class="eyebrow">EN IMAGINATION</span>
+        <h3>Un voyage dans l’espace</h3>
+        <p>Une fusée, des étoiles et des câlins en apesanteur.</p>
+      </article>
+      <article>
+        <Icon name="sun" size={32} />
+        <span class="eyebrow">EN IMAGINATION</span>
+        <h3>Une escapade au Far West</h3>
+        <p>Un petit ranch, de nouveaux amis et le grand air.</p>
+      </article>
+      <article>
+        <Icon name="pin" size={32} />
+        <span class="eyebrow">EN IMAGINATION</span>
+        <h3>Un été à la montagne</h3>
+        <p>Les sentiers, les lacs et une nuit sous la tente.</p>
+      </article>
+    </div>
+  </section>
+  <BookPreview />
+</Base>

@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { books, PRICE_CENTS } from "./catalog";
+import { storyTitle, PRICE_CENTS } from "./catalog";
 import {
   InputError,
   limitedBody,
@@ -86,7 +86,11 @@ export async function createCheckout(request: Request, env: AppEnv) {
   }
   const data = validateOrder(form);
   const pacifier = await validatePhoto(form.get("pacifierPhoto"), true);
-  const child = await validatePhoto(form.get("childPhoto"), false);
+  const child = await validatePhoto(
+    form.get("childPhoto"),
+    true,
+    "votre enfant",
+  );
   const requestHash = await sha256(
     JSON.stringify(data) +
       (await sha256(pacifier!.bytes)) +
@@ -120,8 +124,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
   // Record the intent first: interrupted uploads are covered by the retention task.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   )
     .bind(
       id,
@@ -141,8 +145,10 @@ export async function createCheckout(request: Request, env: AppEnv) {
       childKey,
       PRICE_CENTS,
       env.CHECKOUT_MODE,
-      "2026-10-17",
+      "2026-10-21",
       Date.now(),
+      data.companion,
+      data.companionName,
     )
     .run();
   const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
@@ -179,7 +185,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
             currency: "eur",
             unit_amount: PRICE_CENTS,
             product_data: {
-              name: books[data.book].title,
+              name: storyTitle(data.book, data.companion),
               description:
                 "Livre papier personnalisé — livraison en France métropolitaine incluse",
             },
@@ -187,7 +193,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
         },
       ],
       success_url: `${origin}/confirmation`,
-      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.book}`,
+      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.book}&compagnon=${data.companion}`,
     },
     { idempotencyKey: `mt-checkout-${id}` },
   );

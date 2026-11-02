@@ -6,11 +6,11 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Une petite tétine.",
+    "Ses petits",
   );
   await expect(page.locator(".book-card")).toHaveCount(2);
   await page
-    .getByRole("button", { name: "Feuilleter Tétine va sous les tropiques" })
+    .getByRole("button", { name: "Feuilleter Sous les cocotiers" })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.locator("#preview-counter")).toHaveText("1 / 6");
@@ -23,12 +23,15 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
     .filter({ hasText: "La photo de mon enfant est-elle obligatoire ?" })
     .click();
   await expect(
-    page.getByText("Non, seule la photo de la tétine est nécessaire.", {
-      exact: false,
-    }),
+    page.getByText(
+      "Oui, dans ce parcours elle permet de composer la dernière scène",
+      {
+        exact: false,
+      },
+    ),
   ).toBeVisible();
-  expect(
-    await page
+  await expect.poll(() =>
+    page
       .locator("img")
       .evaluateAll((images) =>
         images
@@ -42,9 +45,9 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
   ).toEqual([]);
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+      () => document.documentElement.scrollWidth,
     ),
-  ).toBe(true);
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
   expect(errors).toEqual([]);
   await page.locator(".site-header").scrollIntoViewIfNeeded();
   await page.screenshot({
@@ -52,7 +55,7 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
     fullPage: true,
   });
 });
-test("personalization to demo confirmation, optional portrait, editing and no data transmission", async ({
+test("personalization to demo confirmation, required portrait, editing and no data transmission", async ({
   page,
 }) => {
   const posts: string[] = [];
@@ -61,7 +64,9 @@ test("personalization to demo confirmation, optional portrait, editing and no da
   });
   await page.goto("/personnaliser?aventure=ski");
   await expect(page.locator("#mode-notice")).toContainText("démonstration");
-  await expect(page.locator("#summary-title")).toHaveText("Tétine va au ski");
+  await expect(page.locator("#summary-title")).toHaveText(
+    "Tétine — La tête dans les flocons",
+  );
   await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator('[data-step="0"]')).toBeVisible();
   await page.getByLabel("Le prénom de votre enfant").fill("Camille");
@@ -69,6 +74,11 @@ test("personalization to demo confirmation, optional portrait, editing and no da
     .locator("#pacifierPhoto")
     .setInputFiles("public/images/tetine-transat.webp");
   await page.locator('[name="photoConsent"]').check();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await expect(page.locator('[data-step="0"]')).toBeVisible();
+  await page
+    .locator("#childPhoto")
+    .setInputFiles("public/images/tetine-avion.webp");
   await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByLabel("Votre prénom", { exact: false }).fill("Alex");
   await page.getByLabel("Votre nom", { exact: false }).fill("Exemple");
@@ -80,7 +90,7 @@ test("personalization to demo confirmation, optional portrait, editing and no da
   await page.getByLabel("Ville", { exact: false }).fill("Paris");
   await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator("#review-child")).toContainText("Camille");
-  await expect(page.locator("#review-photos img")).toHaveCount(1);
+  await expect(page.locator("#review-photos img")).toHaveCount(2);
   await page.locator('[data-edit="0"]').click();
   await page.getByLabel("Le prénom de votre enfant").fill("Léon");
   await page.getByRole("button", { name: "Continuer" }).click();
@@ -92,17 +102,15 @@ test("personalization to demo confirmation, optional portrait, editing and no da
   await expect(page.locator("#status-copy")).toContainText("Aucun paiement");
   expect(posts).toEqual([]);
 });
-test("invalid files can be replaced and an optional portrait removed", async ({
+test("invalid files can be replaced and a portrait removed for correction", async ({
   page,
 }) => {
   await page.goto("/personnaliser");
-  await page
-    .locator("#pacifierPhoto")
-    .setInputFiles({
-      name: "file.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("not an image"),
-    });
+  await page.locator("#pacifierPhoto").setInputFiles({
+    name: "file.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("not an image"),
+  });
   await expect(page.locator("#pacifier-error")).toContainText(
     "Choisissez une image",
   );
@@ -142,4 +150,57 @@ test("private endpoints, cancel, 404 and noindex behave correctly", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "vacances",
   );
+});
+
+test("doudou preselection, nickname and companion photo label are reflected in the summary", async ({
+  page,
+}) => {
+  await page.goto("/personnaliser?compagnon=doudou&aventure=tropiques");
+  await expect(
+    page.locator('[name="companion"][value="doudou"]'),
+  ).toBeChecked();
+  await expect(page.locator("#summary-title")).toHaveText(
+    "Doudou — Sous les cocotiers",
+  );
+  await expect(page.locator("#companion-photo-label")).toHaveText(
+    "La photo de son doudou",
+  );
+  await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
+  await page.locator('[name="companion"][value="tetine"]').check();
+  await expect(page.locator("#summary-title")).toHaveText(
+    "Tétine — Sous les cocotiers",
+  );
+  await expect(page.locator("#companion-photo-label")).toHaveText(
+    "La photo de sa tétine",
+  );
+});
+test("catalogue, story and mobile navigation are reachable", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  if (testInfo.project.name === "mobile") {
+    await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+    await expect(page.locator("#mobile-nav")).toBeVisible();
+    await page
+      .locator("#mobile-nav")
+      .getByRole("link", { name: "Les aventures", exact: true })
+      .click();
+  } else {
+    await page
+      .locator(".desktop-nav")
+      .getByRole("link", { name: "Les aventures", exact: true })
+      .click();
+  }
+  await expect(page).toHaveURL(/aventures$/);
+  await expect(page.locator(".book-card")).toHaveCount(2);
+  await expect(page.getByText("Un voyage dans l’espace")).toBeVisible();
+  await page.goto("/notre-histoire");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "La place qu’ils prennent",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth,
+    ),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
 });

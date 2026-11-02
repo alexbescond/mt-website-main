@@ -1,4 +1,4 @@
-import { isBookId } from "./catalog";
+import { isBookId, isCompanionId } from "./catalog";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -52,6 +52,10 @@ function value(data: FormData, name: string, max: number, required = true) {
 export function validateOrder(data: FormData) {
   const book = value(data, "book", 20);
   if (!isBookId(book)) throw new InputError("Choisissez une aventure.");
+  const companion = value(data, "companion", 10);
+  if (!isCompanionId(companion))
+    throw new InputError("Choisissez un doudou ou une tétine.");
+  const companionName = value(data, "companionName", 60, false);
   const attemptId = value(data, "attemptId", 36);
   if (
     !/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(
@@ -74,6 +78,8 @@ export function validateOrder(data: FormData) {
   return {
     attemptId,
     book,
+    companion,
+    companionName,
     email,
     postalCode,
     childName: value(data, "childName", 60),
@@ -88,9 +94,10 @@ export function validateOrder(data: FormData) {
 export async function validatePhoto(
   entry: FormDataEntryValue | null,
   required: boolean,
+  label = "son compagnon",
 ) {
   if (!(entry instanceof File) || entry.size === 0) {
-    if (required) throw new InputError("Ajoutez une photo de la tétine.");
+    if (required) throw new InputError(`Ajoutez une photo de ${label}.`);
     return null;
   }
   if (entry.size > 5 * 1024 * 1024)

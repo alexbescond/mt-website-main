@@ -1,4 +1,11 @@
-import { books, isBookId } from "../lib/catalog";
+import {
+  books,
+  companions,
+  isBookId,
+  isCompanionId,
+  storyTitle,
+  PRICE_LABEL,
+} from "../lib/catalog";
 const form = document.querySelector<HTMLFormElement>("#order-form")!;
 const panels = [...form.querySelectorAll<HTMLElement>("[data-step]")];
 const next = document.querySelector<HTMLButtonElement>("#next-step")!;
@@ -8,7 +15,18 @@ const modeNotice = document.querySelector<HTMLElement>("#mode-notice")!;
 let step = 0;
 let mode = "unavailable";
 let busy = false;
-let attemptId = crypto.randomUUID();
+function newAttemptId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // Local HTTP previews lack randomUUID, but still support secure random bytes.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+let attemptId = newAttemptId();
 const objectUrls = new Map<string, string>();
 function field(name: string) {
   return form.elements.namedItem(name) as HTMLInputElement;
@@ -17,7 +35,15 @@ function chosenBook() {
   const value = new FormData(form).get("book");
   return isBookId(value) ? value : "tropiques";
 }
+function chosenCompanion() {
+  const value = new FormData(form).get("companion");
+  return isCompanionId(value) ? value : "tetine";
+}
 const params = new URLSearchParams(location.search);
+if (isCompanionId(params.get("compagnon")))
+  form.querySelector<HTMLInputElement>(
+    `input[name="companion"][value="${params.get("compagnon")}"]`,
+  )!.checked = true;
 if (isBookId(params.get("aventure")))
   form.querySelector<HTMLInputElement>(
     `input[value="${params.get("aventure")}"]`,
@@ -27,17 +53,36 @@ if (params.get("annule") === "1")
 function summary() {
   const book = books[chosenBook()];
   document.querySelector<HTMLImageElement>("#summary-image")!.src = book.image;
-  document.querySelector("#summary-title")!.textContent = book.title;
+  const companion = chosenCompanion();
+  document.querySelector("#summary-title")!.textContent = storyTitle(
+    chosenBook(),
+    companion,
+  );
+  document.querySelector("#companion-photo-label")!.textContent =
+    companion === "doudou" ? "La photo de son doudou" : "La photo de sa tétine";
+  document.querySelector("#summary-caption")!.textContent =
+    companion === "doudou"
+      ? "DÉCOR ILLUSTRATIF · VOTRE DOUDOU SERA LE HÉROS"
+      : "EXEMPLE ILLUSTRÉ AVEC TÉTINE";
+  if (!field("pacifierPhoto").files?.length)
+    field("pacifierPhoto")
+      .closest(".upload-zone")!
+      .querySelector(".upload-title")!.textContent =
+      `Choisir une photo de ${companions[companion].character}`;
   const child = field("childName").value.trim();
   document.querySelector("#summary-child")!.textContent = child
     ? `Une histoire pour ${child}`
-    : "L’histoire de sa tétine";
+    : "L’histoire de son compagnon";
 }
 function review() {
-  document.querySelector("#review-book")!.textContent =
-    books[chosenBook()].title;
+  document.querySelector("#review-book")!.textContent = storyTitle(
+    chosenBook(),
+    chosenCompanion(),
+  );
   document.querySelector("#review-child")!.textContent =
     `Pour ${field("childName").value.trim()}`;
+  document.querySelector("#review-companion")!.textContent =
+    `${companions[chosenCompanion()].label}${field("companionName").value.trim() ? ` · ${field("companionName").value.trim()}` : ""}`;
   document.querySelector("#review-notes")!.textContent = field("notes").value;
   document.querySelector("#review-address")!.textContent =
     `${field("firstName").value} ${field("lastName").value}\n${field("address").value}\n${field("addressExtra").value ? field("addressExtra").value + "\n" : ""}${field("postalCode").value} ${field("city").value}\nFrance métropolitaine`;
@@ -48,7 +93,7 @@ function review() {
     const img = document.createElement("img");
     img.src = url;
     img.alt =
-      name === "pacifierPhoto" ? "Votre tétine" : "Portrait de votre enfant";
+      name === "pacifierPhoto" ? "Son compagnon" : "Portrait de votre enfant";
     photos.appendChild(img);
   }
 }
@@ -67,7 +112,7 @@ function go(index: number) {
         ? "Terminer la démonstration →"
         : mode === "test"
           ? "Tester le paiement Stripe →"
-          : "Payer 29,90 € avec Stripe →"
+          : `Payer ${PRICE_LABEL} avec Stripe →`
       : "Continuer →";
   if (index === 2) review();
   panels[index]
@@ -101,7 +146,7 @@ function showError(text: string) {
 }
 form.addEventListener("input", () => {
   summary();
-  if (!busy) attemptId = crypto.randomUUID();
+  if (!busy) attemptId = newAttemptId();
 });
 for (const name of ["pacifierPhoto", "childPhoto"]) {
   const input = field(name);
@@ -139,7 +184,7 @@ for (const name of ["pacifierPhoto", "childPhoto"]) {
     } else
       zone.querySelector(".upload-title")!.textContent =
         name === "pacifierPhoto"
-          ? "Choisir une photo de Tétine"
+          ? `Choisir une photo de ${companions[chosenCompanion()].character}`
           : "Ajouter son portrait";
     document.querySelector<HTMLButtonElement>("#remove-child")!.hidden =
       !field("childPhoto").files?.length;
@@ -214,6 +259,9 @@ form.addEventListener("submit", async (event) => {
     next.textContent = oldLabel;
   }
 });
+window.addEventListener("pagehide", () => {
+  for (const url of objectUrls.values()) URL.revokeObjectURL(url);
+});
 summary();
 async function initialize() {
   try {
@@ -236,11 +284,11 @@ async function initialize() {
       document.querySelector("#payment-note")!.textContent =
         mode === "test"
           ? "Vous serez redirigé vers Stripe en mode test. Aucune somme ne sera débitée."
-          : "Vous serez redirigé vers Stripe pour régler 29,90 €. Vos informations bancaires ne transitent pas par notre site.";
+          : `Vous serez redirigé vers Stripe pour régler ${PRICE_LABEL}. Vos informations bancaires ne transitent pas par notre site.`;
       next.disabled = false;
     } else {
       modeNotice.textContent =
-        "Les commandes ne sont pas encore ouvertes. Revenez bientôt pour préparer le voyage de Tétine.";
+        "Les commandes ne sont pas encore ouvertes. Revenez bientôt pour préparer le voyage de son compagnon.";
     }
   } catch {
     modeNotice.textContent =

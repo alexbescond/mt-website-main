@@ -16,7 +16,7 @@ export default {
       );
     else if (url.pathname === "/sitemap.xml")
       response = new Response(
-        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${env.SITE_ORIGIN}/</loc></url></urlset>`,
+        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${env.SITE_ORIGIN}/</loc></url><url><loc>${env.SITE_ORIGIN}/aventures</loc></url><url><loc>${env.SITE_ORIGIN}/notre-histoire</loc></url></urlset>`,
         { headers: { "Content-Type": "application/xml" } },
       );
     else if (url.pathname.startsWith("/api/"))

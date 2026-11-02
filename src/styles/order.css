@@ -559,3 +559,91 @@ legend {
     height: 13px;
   }
 }
+
+.companion-field {
+  margin: 25px 0;
+}
+.companion-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.companion-option {
+  position: relative;
+  border: 1px solid var(--line);
+  padding: 19px 15px;
+  border-radius: 7px;
+  cursor: pointer;
+  background: var(--paper);
+}
+.companion-option:has(input:checked) {
+  border: 2px solid var(--coral);
+  background: #f5e7da;
+  padding: 18px 14px;
+}
+.companion-option input {
+  accent-color: var(--coral);
+  margin: 0 6px 0 0;
+}
+.companion-option strong {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+}
+.companion-option span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 7px;
+}
+.companion-option:focus-within {
+  outline: 3px solid #977137;
+  outline-offset: 3px;
+}
+.upload-title {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.destination-option > span:not(.radio-mark) {
+  padding-right: 27px;
+}
+.summary-photo > span {
+  max-width: calc(100% - 30px);
+  font-size: 7px;
+}
+.summary-body h2 {
+  overflow-wrap: anywhere;
+}
+.form-panel h2:focus-visible {
+  outline: 2px solid #977137;
+  outline-offset: 5px;
+}
+@media (max-width: 640px) {
+  .field input,
+  .field textarea,
+  .field select {
+    font-size: 16px;
+  }
+  .companion-option {
+    padding: 17px 11px;
+  }
+  .companion-option:has(input:checked) {
+    padding: 16px 10px;
+  }
+  .companion-option strong {
+    font-size: 18px;
+  }
+  .order-heading h1 {
+    font-size: 37px;
+  }
+  .order-summary {
+    grid-template-columns: 95px 1fr;
+  }
+  .summary-body {
+    padding: 16px;
+  }
+  .order-page .back-link {
+    font-size: 10px;
+  }
+}

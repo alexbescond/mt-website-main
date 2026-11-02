@@ -4,7 +4,7 @@ Les dix images tropicales ont été fournies par l’utilisateur dans cette conv
 
 | Image | Utilisation |
 | --- | --- |
-| `tetine-transat.webp` | Accueil, livre tropical, personnalisation |
+| `tetine-transat.webp` | Livre tropical, personnalisation |
 | `tetine-hamac.webp` | Histoire du projet, extrait du livre |
 | `tetine-paddle.webp` | Galerie et extrait |
 | `tetine-plongee.webp` | Extrait |
@@ -22,3 +22,9 @@ Prompt de génération retenu :
 > Use case: illustration-story. Create a new winter vacation scene using the attached image as a character and style reference. Preserve the exact recognizable plum pacifier design: rounded butterfly plum-purple plastic shield with small ventilation holes, cream central dome with tiny worn gold motifs, small plum arms and legs, no human face. The same pacifier is happily skiing on miniature wooden skis on a beautiful snowy alpine slope, wearing a cream knitted hat and a muted coral scarf, holding ski poles with little plum hands. Snow-dusted fir trees and majestic mountain peaks, blue sky, warm sunlight, detailed realistic miniature photography with tactile textures. Keep the character proportions, worn dome and plum color very close to the reference. Landscape 3:2 composition, subject near center lower half. No text, no watermark, no humans.
 
 Ces images sont des exemples de présentation. La version actuelle du site ne génère pas automatiquement les images ou les livres des clients.
+
+## Illustration commune doudou et tétine
+
+`public/images/compagnons-voyage.webp` a été créée avec l’outil intégré ImageGen le 21 octobre 2026, puis optimisée en WebP (1536 × 1024, qualité 86). Elle sert à l’accueil, à la page de présentation et au partage social. Elle illustre l’univers de marque avec des personnages fictifs ; ce n’est pas une commande client ni une validation de la charte des livres.
+
+Prompt : illustration jeunesse 3D chaleureuse, tactile et cinématographique ; doudou lapin beige au foulard sauge et sac rouille, tétine prune expressive aux petits bras et jambes crème ; tous deux regardent une carte illustrée sans texte sur un ponton au bord d’un lagon turquoise. Petite valise, île tropicale, palmiers, sable clair et bungalow au loin. Lumière douce du matin, palette crème, sauge, corail et turquoise. Composition paysage 3:2, personnages centraux, espace autour pour le recadrage mobile. Aucun enfant, texte, logo ou filigrane.

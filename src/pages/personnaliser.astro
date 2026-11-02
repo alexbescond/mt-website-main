@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import { books, PRICE_LABEL } from "../lib/catalog";
+import { books, companions, PRICE_LABEL } from "../lib/catalog";
 import "../styles/order.css";
 ---
 
@@ -12,7 +12,7 @@ import "../styles/order.css";
       <h1>
         Préparons le voyage
         <br />
-        de <em>sa tétine.</em>
+        de <em>son compagnon.</em>
       </h1>
       <p>Les petits détails font les grandes histoires.</p>
     </div>
@@ -44,10 +44,39 @@ import "../styles/order.css";
         <section data-step="0" class="form-panel">
           <h2 tabindex="-1">Faisons connaissance.</h2>
           <p class="form-intro">
-            Tout commence par votre petit grand et sa fidèle complice.
+            Tout commence par votre enfant et le petit héros de son histoire.
           </p>
+          <fieldset class="companion-field">
+            <legend>Qui sera le héros de son histoire ?</legend>
+            <div class="companion-options">
+              {Object.entries(companions).map(([id, companion]) => (
+                <label class="companion-option">
+                  <input
+                    type="radio"
+                    name="companion"
+                    value={id}
+                    checked={id === "tetine"}
+                    required
+                  />
+                  <strong>{companion.label}</strong>
+                  <span>{companion.description}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label class="field">
+            Le petit nom de son compagnon{" "}
+            <span class="optional">facultatif</span>
+            <input
+              name="companionName"
+              autocomplete="off"
+              maxlength="60"
+              placeholder="Par exemple, Lapinou ou Titi"
+            />
+            <small>Un surnom que l’on pourra glisser dans l’histoire.</small>
+          </label>
           <fieldset class="destination-field">
-            <legend>Quelle destination pour Tétine ?</legend>
+            <legend>Quelle destination pour son compagnon ?</legend>
             <div class="destination-options">
               {Object.entries(books).map(([id, b]) => (
                 <label class="destination-option">
@@ -77,7 +106,8 @@ import "../styles/order.css";
           </label>
           <div class="upload-field">
             <label for="pacifierPhoto">
-              La photo de sa tétine <span class="required">*</span>
+              <span id="companion-photo-label">La photo de sa tétine</span>{" "}
+              <span class="required">*</span>
             </label>
             <p>
               De face, bien éclairée, sur un fond simple : on veut reconnaître
@@ -97,7 +127,7 @@ import "../styles/order.css";
               />
               <img
                 class="upload-preview"
-                alt="Aperçu de la photo de votre tétine"
+                alt="Aperçu de la photo de son compagnon"
                 hidden
               />
             </label>
@@ -109,11 +139,11 @@ import "../styles/order.css";
           </div>
           <div class="upload-field">
             <label for="childPhoto">
-              La photo de votre enfant <span class="optional">facultatif</span>
+              La photo de votre enfant <span class="required">*</span>
             </label>
             <p>
-              Pour lui faire une petite place dans le livre, aux côtés de
-              Tétine.
+              Pour la dernière scène : son portrait original dans un cadre près
+              du lit de son compagnon. Son visage ne sera pas redessiné.
             </p>
             <label class="upload-zone upload-compact" for="childPhoto">
               <Icon name="upload" size={24} />
@@ -123,6 +153,7 @@ import "../styles/order.css";
                 id="childPhoto"
                 name="childPhoto"
                 type="file"
+                required
                 accept="image/jpeg,image/png,image/webp"
                 aria-describedby="child-error"
               />
@@ -148,7 +179,7 @@ import "../styles/order.css";
               name="notes"
               rows="3"
               maxlength="500"
-              placeholder="Le surnom de sa tétine, une petite habitude, un détail qui compte…"
+              placeholder="Une petite habitude, un détail qui compte, une préférence…"
             ></textarea>
           </label>
           <label class="checkbox-field">
@@ -280,6 +311,7 @@ import "../styles/order.css";
             </div>
             <p id="review-book"></p>
             <p id="review-child"></p>
+            <p id="review-companion"></p>
             <div class="review-photos" id="review-photos"></div>
             <p id="review-notes"></p>
           </div>
@@ -342,15 +374,15 @@ import "../styles/order.css";
             height="400"
             alt="Aperçu illustratif de l’aventure choisie"
           />
-          <span>SON PROCHAIN GRAND VOYAGE</span>
+          <span id="summary-caption">EXEMPLE ILLUSTRÉ AVEC TÉTINE</span>
         </div>
         <div class="summary-body">
           <span class="eyebrow">UN EXEMPLAIRE RIEN QU’À LUI</span>
           <h2 id="summary-title">{books.tropiques.title}</h2>
-          <p id="summary-child">L’histoire de sa tétine</p>
+          <p id="summary-child">L’histoire de son compagnon</p>
           <ul>
             <li>
-              <Icon name="check" size={17} /> Sa propre tétine dans l’histoire
+              <Icon name="check" size={17} /> Son vrai compagnon dans l’histoire
             </li>
             <li>
               <Icon name="check" size={17} /> Personnalisé avec son prénom
