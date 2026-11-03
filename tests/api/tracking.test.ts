@@ -109,6 +109,56 @@ it("plans dates, records actual dispatches atomically, rejects repeats and sched
   expect(addDays("2026-03-25", 7)).toBe("2026-04-01");
   expect(parisDate(Date.parse("2026-06-01T22:30:00Z"))).toBe("2026-06-02");
 });
+it("allows direct status selection and rollback, clearing dispatch dates and unattempted notifications atomically", async () => {
+  const id = await paidOrder();
+  const cookie = await admin();
+  const path = "/api/admin/orders/" + id + "/cards/1";
+  const today = parisDate();
+  const card = () => env.DB.prepare("SELECT state,sent_date,version FROM order_cards WHERE order_id=? AND position=1").bind(id).first();
+  expect((await call(path, { state: "ready", version: 0 }, cookie)).status).toBe(200);
+  expect((await call(path, { state: "preparing", version: 1 }, cookie)).status).toBe(200);
+  expect((await call(path, { state: "queued", version: 2 }, cookie)).status).toBe(200);
+  expect((await call(path, { state: "sent", version: 3, sentDate: today }, cookie)).status).toBe(200);
+  expect((await call(path, { state: "queued", version: 3 }, cookie)).status).toBe(409);
+  expect(await card()).toMatchObject({ state: "sent", sent_date: today, version: 4 });
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(1);
+  expect((await call(path, { state: "ready", version: 4 }, cookie)).status).toBe(200);
+  expect(await card()).toMatchObject({ state: "ready", sent_date: null, version: 5 });
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(0);
+  expect((await call(path, { state: "sent", version: 5, sentDate: today }, cookie)).status).toBe(200);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(1);
+  expect((await call(path, { state: "invalid", version: 6 }, cookie)).status).toBe(400);
+});
+it("requires rolling back later dispatches first and waits for in-flight notifications", async () => {
+  const id = await paidOrder();
+  const cookie = await admin();
+  const path = "/api/admin/orders/" + id + "/cards/";
+  const today = parisDate();
+  expect((await call(path + 1, { state: "sent", version: 0, sentDate: today }, cookie)).status).toBe(200);
+  expect((await call(path + 2, { state: "sent", version: 1, sentDate: today }, cookie)).status).toBe(200);
+  expect((await call(path + 1, { state: "queued", version: 1 }, cookie)).status).toBe(409);
+  expect((await call(path + 2, { state: "ready", version: 2 }, cookie)).status).toBe(200);
+  await env.DB.prepare("UPDATE notification_outbox SET status='sending',attempts=1 WHERE kind='shipped'").run();
+  expect((await call(path + 1, { state: "queued", version: 1 }, cookie)).status).toBe(409);
+  await env.DB.prepare("UPDATE notification_outbox SET status='pending' WHERE kind='shipped'").run();
+  expect((await call(path + 1, { state: "queued", version: 1 }, cookie)).status).toBe(200);
+  await call("/api/admin/orders/" + id + "/notifications/retry", {}, cookie);
+  expect(await env.DB.prepare("SELECT status,error_code FROM notification_outbox WHERE kind='shipped'").first())
+    .toMatchObject({ status: "failed", error_code: "DISPATCH_CANCELLED" });
+  expect((await call(path + 1, { state: "sent", version: 2, sentDate: today }, cookie)).status).toBe(200);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(1);
+});
+it("keeps delivered notification history without sending duplicates after a correction", async () => {
+  const id = await paidOrder();
+  const cookie = await admin();
+  const path = "/api/admin/orders/" + id + "/cards/1";
+  expect((await call(path, { state: "sent", version: 0, sentDate: parisDate() }, cookie)).status).toBe(200);
+  await env.DB.prepare("UPDATE notification_outbox SET status='sent',attempts=1 WHERE kind='shipped'").run();
+  expect((await call(path, { state: "preparing", version: 1 }, cookie)).status).toBe(200);
+  expect((await call(path, { state: "sent", version: 2, sentDate: parisDate() }, cookie)).status).toBe(200);
+  const notifications = await env.DB.prepare("SELECT status FROM notification_outbox WHERE kind='shipped'").all();
+  expect(notifications.results).toEqual([{ status: "sent" }]);
+});
 it("isolates live and test orders and only permits the paid order to be followed", async () => {
   const id = await paidOrder("live");
   const cookie = await admin();

@@ -91,7 +91,7 @@ export async function updateCard(request: Request, env: AppEnv, orderId: string,
   await requireAdmin(request, env);
   const body = await readJson(request);
   const state = body.state;
-  if (!["preparing", "ready", "sent"].includes(String(state)) || !Number.isInteger(body.version) || Number(body.version) < 0)
+  if (!["queued", "preparing", "ready", "sent"].includes(String(state)) || !Number.isInteger(body.version) || Number(body.version) < 0)
     throw new InputError("Mise à jour invalide.");
   const sentDate = state === "sent" ? validateDate(body.sentDate) : null;
   if (sentDate && sentDate > parisDate()) throw new InputError("Une expédition réelle ne peut pas être dans le futur.");
@@ -99,12 +99,18 @@ export async function updateCard(request: Request, env: AppEnv, orderId: string,
     .bind(orderId, env.CHECKOUT_MODE).first<{ paid_at: number }>();
   if (!paid) throw new InputError("Commande introuvable.", 404);
   if (sentDate && sentDate < parisDate(paid.paid_at)) throw new InputError("La date d’envoi précède le paiement.");
-  const previous = state === "preparing" ? "queued" : state === "ready" ? "preparing" : "ready";
   const now = Date.now();
   const writeId = crypto.randomUUID();
   const statements = [
-    env.DB.prepare("UPDATE order_cards SET state=?,sent_date=?,version=version+1,updated_at=?,write_id=? WHERE order_id=? AND position=? AND version=? AND state=? AND EXISTS(SELECT 1 FROM orders o WHERE o.id=order_id AND o.status='paid' AND o.payment_mode=?) AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM order_cards earlier WHERE earlier.order_id=? AND earlier.position<? AND (earlier.state!='sent' OR earlier.sent_date>?)))")
-      .bind(state, sentDate, now, writeId, orderId, position, body.version, previous, env.CHECKOUT_MODE, sentDate, orderId, position, sentDate),
+    env.DB.prepare(`UPDATE order_cards SET state=?,sent_date=?,version=version+1,updated_at=?,write_id=?
+      WHERE order_id=? AND position=? AND version=? AND state!=?
+      AND EXISTS(SELECT 1 FROM orders o WHERE o.id=order_id AND o.status='paid' AND o.payment_mode=?)
+      AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM order_cards earlier WHERE earlier.order_id=? AND earlier.position<? AND (earlier.state!='sent' OR earlier.sent_date>?)))
+      AND (state!='sent' OR (
+        NOT EXISTS(SELECT 1 FROM order_cards later WHERE later.order_id=? AND later.position>? AND later.state='sent')
+        AND NOT EXISTS(SELECT 1 FROM notification_outbox n WHERE n.order_id=? AND n.card_position=? AND n.kind='shipped' AND n.status='sending')
+      ))`)
+      .bind(state, sentDate, now, writeId, orderId, position, body.version, state, env.CHECKOUT_MODE, sentDate, orderId, position, sentDate, orderId, position, orderId, position),
   ];
   if (state === "sent") {
     statements.push(
@@ -113,9 +119,17 @@ export async function updateCard(request: Request, env: AppEnv, orderId: string,
       env.DB.prepare("INSERT OR IGNORE INTO notification_outbox(id,order_id,kind,card_position,available_at,created_at) SELECT order_id||'/shipped/'||position,order_id,'shipped',position,?,? FROM order_cards WHERE order_id=? AND position=? AND write_id=?")
         .bind(now, now, orderId, position, writeId),
     );
+  } else {
+    // Remove notifications never attempted; retain attempted ones for deduplication/audit.
+    statements.push(
+      env.DB.prepare("DELETE FROM notification_outbox WHERE order_id=? AND card_position=? AND kind='shipped' AND status IN ('pending','failed') AND attempts=0 AND EXISTS(SELECT 1 FROM order_cards changed WHERE changed.order_id=? AND changed.position=? AND changed.write_id=?)")
+        .bind(orderId, position, orderId, position, writeId),
+      env.DB.prepare("UPDATE notification_outbox SET status='failed',error_code='DISPATCH_CANCELLED',lease_id=NULL WHERE order_id=? AND card_position=? AND kind='shipped' AND status IN ('pending','failed') AND EXISTS(SELECT 1 FROM order_cards changed WHERE changed.order_id=? AND changed.position=? AND changed.write_id=?)")
+        .bind(orderId, position, orderId, position, writeId),
+    );
   }
   const result = await env.DB.batch(statements);
-  if (!result[0].meta.changes) throw new InputError("La carte a changé, ou une carte précédente attend son envoi. Actualisez le tableau et vérifiez les dates.", 409);
+  if (!result[0].meta.changes) throw new InputError("Modification impossible. Actualisez le tableau et vérifiez les dates : expédiez les cartes dans l’ordre et annulez les expéditions en commençant par la dernière. Si un e-mail est en cours d’envoi, réessayez dans quelques instants.", 409);
   return Response.json({ ok: true });
 }
 function validateDate(value: unknown) {
@@ -151,7 +165,7 @@ export async function adminPhoto(request: Request, env: AppEnv, orderId: string)
 export async function retryNotifications(request: Request, env: AppEnv, orderId: string) {
   await requireAdmin(request, env);
   await readJson(request);
-  await env.DB.prepare("UPDATE notification_outbox SET status='pending',attempts=0,available_at=?,lease_id=NULL,error_code=NULL WHERE order_id=? AND status='failed' AND EXISTS(SELECT 1 FROM orders WHERE id=order_id AND payment_mode=?)")
+  await env.DB.prepare("UPDATE notification_outbox SET status='pending',attempts=0,available_at=?,lease_id=NULL,error_code=NULL WHERE order_id=? AND status='failed' AND (error_code IS NULL OR error_code!='DISPATCH_CANCELLED') AND EXISTS(SELECT 1 FROM orders WHERE id=order_id AND payment_mode=?)")
     .bind(Date.now(), orderId, env.CHECKOUT_MODE).run();
   return Response.json({ ok: true });
 }

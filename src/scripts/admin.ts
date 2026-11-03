@@ -14,9 +14,11 @@ async function mutate(order: AdminOrder, card: TrackingCard, state: TrackingCard
     const target = current.cards.find(item => item.position === card.position)!;
     if (state === "sent" && current.cards.some(item => item.position < card.position && item.state !== "sent"))
       throw new Error("Expédiez d’abord les cartes précédentes.");
+    if (state !== "sent" && target.state === "sent" && current.cards.some(item => item.position > card.position && item.state === "sent"))
+      throw new Error("Annulez d’abord l’expédition des cartes suivantes.");
     target.state = state; target.version++;
+    target.sent_date = state === "sent" ? sentDate! : null;
     if (sentDate) {
-      target.sent_date = sentDate;
       current.cards.filter(item => item.position > card.position).forEach(item => { item.planned_date = addDays(sentDate, (item.position - card.position) * 7); item.version++; });
     }
     saveDemo(current);
@@ -66,28 +68,35 @@ function renderOrder(order: AdminOrder) {
     appendChildren(copy, element("h3", "", "Carte " + card.position + " · " + scene.title), badge,
       element("p", "", card.sent_date ? "Expédiée le " + displayDate(card.sent_date) : card.planned_date ? "Départ prévu le " + displayDate(card.planned_date) : "Date à planifier"));
     appendChildren(row, image, copy);
-    if (card.state !== "sent") {
-      const next = card.state === "queued" ? "preparing" : card.state === "preparing" ? "ready" : "sent";
-      const button = element("button", "button button-small", next === "preparing" ? "Commencer la préparation" : next === "ready" ? "Marquer comme prête" : "Marquer comme expédiée");
-      button.type = "button";
-      button.addEventListener("click", async () => {
-        if (next === "sent") {
-          selected = { order, card };
-          document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + " · Carte " + card.position + " · " + scene.title;
-          const date = document.querySelector<HTMLInputElement>("#dispatch-date")!;
-          date.max = parisDate(); date.value = parisDate();
-          date.min = order.cards[card.position - 2]?.sent_date || parisDate(order.paidAt);
-          document.querySelector("#dispatch-error")!.textContent = "";
-          dialog.showModal(); return;
-        }
-        button.disabled = true;
-        try { await mutate(order, card, next); await load(); message.textContent = "L’avancement de la carte est à jour."; }
-        catch (error) { message.textContent = errorText(error); } finally { button.disabled = false; }
-      }); appendChildren(row, button);
-    }
+    const statusLabel = element("label", "admin-card-status", "Statut");
+    const select = element("select");
+    select.setAttribute("aria-label", "Statut de la carte " + card.position + " · Commande " + order.reference);
+    Object.entries(cardStates).forEach(([value, label]) => {
+      const option = element("option", "", label); option.value = value;
+      appendChildren(select, option);
+    });
+    select.value = card.state;
+    select.addEventListener("change", async () => {
+      const next = select.value as TrackingCard["state"];
+      if (next === card.state) return;
+      if (next === "sent") {
+        select.value = card.state;
+        selected = { order, card };
+        document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + " · Carte " + card.position + " · " + scene.title;
+        const date = document.querySelector<HTMLInputElement>("#dispatch-date")!;
+        date.max = parisDate(); date.value = parisDate();
+        date.min = order.cards[card.position - 2]?.sent_date || parisDate(order.paidAt);
+        document.querySelector("#dispatch-error")!.textContent = "";
+        dialog.showModal(); return;
+      }
+      select.disabled = true;
+      try { await mutate(order, card, next); await load(); message.textContent = "L’avancement de la carte est à jour."; }
+      catch (error) { select.value = card.state; message.textContent = errorText(error); } finally { select.disabled = false; }
+    });
+    appendChildren(statusLabel, select); appendChildren(row, statusLabel);
     appendChildren(article, row);
   });
-  const failed = order.notifications.filter(item => item.status === "failed").length;
+  const failed = order.notifications.filter(item => item.status === "failed" && item.error_code !== "DISPATCH_CANCELLED").length;
   const waiting = order.notifications.filter(item => item.status === "pending" || item.status === "sending").length;
   if (failed && !demo) {
     const retry = element("button", "tracking-text-button", "Réessayer les notifications en échec");
@@ -152,7 +161,7 @@ document.querySelector<HTMLFormElement>("#dispatch-form")!.addEventListener("sub
   const button = (event.currentTarget as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!; button.disabled = true;
   try {
     await mutate(selected.order, selected.card, "sent", document.querySelector<HTMLInputElement>("#dispatch-date")!.value);
-    dialog.close(); await load(); message.textContent = demo ? "Expédition simulée. Retrouvez-la dans le suivi client." : "Expédition enregistrée. La notification est en attente d’envoi.";
+    dialog.close(); await load(); message.textContent = demo ? "Expédition simulée. Retrouvez-la dans le suivi client." : "Expédition enregistrée. Le suivi client est à jour.";
   } catch (error) { document.querySelector("#dispatch-error")!.textContent = errorText(error); }
   finally { button.disabled = false; }
 });

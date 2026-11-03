@@ -11,8 +11,8 @@ export async function sendNotifications(env: AppEnv) {
     .bind(now).all<{ id: string; order_id: string; kind: string; card_position: number | null; attempts: number; created_at: number; email: string; sent_date: string | null }>();
   for (const row of results) {
     const lease = crypto.randomUUID();
-    const claim = await env.DB.prepare("UPDATE notification_outbox SET status='sending',lease_id=?,attempts=attempts+1,available_at=? WHERE id=? AND status IN ('pending','sending') AND available_at<=? AND attempts<5")
-      .bind(lease, Date.now() + 300000, row.id, Date.now()).run();
+    const claim = await env.DB.prepare("UPDATE notification_outbox SET status='sending',lease_id=?,attempts=attempts+1,available_at=? WHERE id=? AND created_at=? AND status IN ('pending','sending') AND available_at<=? AND attempts<5 AND (kind!='shipped' OR EXISTS(SELECT 1 FROM order_cards c WHERE c.order_id=notification_outbox.order_id AND c.position=notification_outbox.card_position AND c.state='sent' AND c.sent_date=?))")
+      .bind(lease, Date.now() + 300000, row.id, row.created_at, Date.now(), row.sent_date).run();
     if (!claim.meta.changes) continue;
     try {
       // Keep the signed URL identical on retries: Resend requires the same body for a given key.
