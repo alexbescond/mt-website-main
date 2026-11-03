@@ -69,12 +69,12 @@ function notificationCopy(kind: string, reference: string, position?: number, da
 
   return {
     subject: `Votre commande ${reference} est confirmée`,
-    preview: "Paiement reçu : nous préparons les cartes et vous préviendrons à chaque expédition.",
+    preview: "Commande confirmée : nous préparons les cartes et vous préviendrons à chaque expédition.",
     eyebrow: "COMMANDE CONFIRMÉE",
     title: "Merci pour votre commande.",
     accent: "Nous nous occupons du reste.",
     paragraphs: [
-      "Votre paiement a bien été reçu et votre commande est enregistrée.",
+      "Votre commande est confirmée et enregistrée.",
       "Nous allons maintenant créer les cartes de votre enfant à partir de la photo que vous nous avez confiée et des aventures choisies. Chacune comportera une illustration et un message à son prénom.",
     ],
     detailTitle: "Les prochaines étapes",

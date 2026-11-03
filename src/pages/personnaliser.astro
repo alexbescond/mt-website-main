@@ -298,6 +298,18 @@ import "../styles/order.css";
             <p id="review-address"></p>
             <p id="review-email"></p>
           </div>
+          <details class="coupon-box" id="coupon-box">
+            <summary>Vous avez un code promo ?</summary>
+            <label class="field" for="coupon-code">
+              Code promo
+              <input id="coupon-code" name="couponCode" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="coupon-message" />
+            </label>
+            <div class="coupon-actions">
+              <button type="button" class="button button-secondary" id="apply-coupon">Appliquer</button>
+              <button type="button" class="edit-button" id="remove-coupon" hidden>Retirer le code</button>
+            </div>
+            <p id="coupon-message" role="status" aria-live="polite"></p>
+          </details>
           <label class="checkbox-field">
             <input type="checkbox" name="termsConsent" required />
             <span>
@@ -380,6 +392,9 @@ import "../styles/order.css";
           <div class="summary-line">
             <span>Livraison</span>
             <span>Incluse</span>
+          </div>
+          <div class="summary-line summary-discount" id="summary-coupon-row" hidden>
+            <span id="summary-coupon-label"></span><span id="summary-coupon-discount"></span>
           </div>
           <div class="summary-total">
             <span>Total</span>

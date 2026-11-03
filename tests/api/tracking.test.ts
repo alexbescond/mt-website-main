@@ -7,6 +7,7 @@ import base from "../../migrations/0001_orders.sql?raw";
 import companions from "../../migrations/0002_companions.sql?raw";
 import postcards from "../../migrations/0003_postcards.sql?raw";
 import tracking from "../../migrations/0004_tracking.sql?raw";
+import coupons from "../../migrations/0006_coupons.sql?raw";
 import { api } from "../../src/lib/api";
 import { paidOrderStatements } from "../../src/lib/tracking";
 import { trackingLink } from "../../src/lib/tracking-auth";
@@ -19,7 +20,7 @@ const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false"
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) } };
 beforeEach(async () => {
-  await env.DB.batch([base, companions, postcards, tracking, delivery].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await env.DB.batch([base, companions, postcards, tracking, delivery, coupons].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
 });
 afterEach(async () => { vi.restoreAllMocks(); await reset(); });
 function call(path: string, body?: unknown, cookie?: string, custom = bindings, requestOrigin = origin) {
@@ -29,7 +30,7 @@ function call(path: string, body?: unknown, cookie?: string, custom = bindings, 
 }
 async function paidOrder(mode = "test") {
   const id = crypto.randomUUID();
-  await env.DB.prepare("INSERT INTO orders(id,request_hash,access_token,book,child_name,first_name,last_name,email,address,postal_code,city,amount_cents,payment_mode,consent_version,created_at,paid_at,status,product_type,card_quantity,card_adventures,companion_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+  await env.DB.prepare("INSERT INTO orders(id,request_hash,access_token,book,child_name,first_name,last_name,email,address,postal_code,city,amount_cents,payment_mode,consent_version,created_at,paid_at,status,product_type,card_quantity,card_adventures,companion_name,subtotal_cents) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1650)")
     .bind(id, "hash", crypto.randomUUID() + crypto.randomUUID(), "ski", "Camille", "Alex", "Martin", "parent@example.com", "12 rue des Nuages", "75001", "Paris", 1650, mode, "test", Date.now(), Date.now(), "paid", "postcards", 3, '["ski","tropiques","espace"]', "<script>Lapinou</script>").run();
   await env.DB.batch(paidOrderStatements(bindings, id, Date.now()));
   return id;

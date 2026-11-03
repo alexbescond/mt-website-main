@@ -1,4 +1,102 @@
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+async function couponCheckout(page: Page) {
+  await page.route("**/api/config", route => route.fulfill({ json: { mode: "test", available: true } }));
+  await page.goto("/personnaliser?cartes=3&envoi=together");
+  await page.getByLabel("Le prénom de votre enfant").fill("Camille");
+  await page.locator("#pacifierPhoto").setInputFiles("public/images/tetine-transat.webp");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByLabel("Votre prénom", { exact: false }).fill("Alex");
+  await page.getByLabel("Votre nom", { exact: false }).fill("Exemple");
+  await page.getByLabel("Votre adresse e-mail").fill("parent@example.com");
+  await page.getByLabel("Adresse de livraison", { exact: false }).fill("1 rue du Test");
+  await page.getByLabel("Code postal").fill("75001");
+  await page.getByLabel("Ville", { exact: false }).fill("Paris");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.locator("#coupon-box summary").click();
+}
+
+test("coupon preview updates the price, clears on email changes and can be removed", async ({ page }, testInfo) => {
+  const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
+  await page.route("**/api/coupon", route => route.fulfill({ json: {
+    code: "WELCOME10", label: "Bienvenue", percentOff: 10, discountCents: 143, totalCents: 1282,
+  } }));
+  await couponCheckout(page);
+  await page.getByLabel("Code promo", { exact: true }).fill("welcome10");
+  await page.getByRole("button", { name: "Appliquer", exact: true }).click();
+  await expect(page.locator("#summary-total")).toHaveText(/12,82/);
+  await expect(page.locator("#summary-coupon-row")).toContainText("Bienvenue · −10 %");
+  await expect(page.locator("#review-book")).toContainText("12,82");
+  await expect(page.locator("#next-step")).toContainText("12,82");
+  await page.screenshot({ path: `.context/coupon-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator('[data-edit="1"]').click();
+  await page.getByLabel("Votre adresse e-mail").fill("another@example.com");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await expect(page.locator("#summary-coupon-row")).toBeHidden();
+  await expect(page.locator("#summary-total")).toHaveText(/14,25/);
+  await expect(page.locator("#coupon-message")).toContainText("Appliquez à nouveau");
+  await page.getByRole("button", { name: "Appliquer", exact: true }).click();
+  await expect(page.locator("#summary-total")).toHaveText(/12,82/);
+  await page.getByRole("button", { name: "Retirer le code" }).click();
+  await expect(page.locator("#summary-total")).toHaveText(/14,25/);
+  await expect(page.getByLabel("Code promo", { exact: true })).toHaveValue("");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
+  expect(errors).toEqual([]);
+});
+
+test("free checkout shows no-card messaging and submits the coupon and accepted total", async ({ page }) => {
+  await page.route("**/api/coupon", route => route.fulfill({ json: {
+    code: "PRIVATE-FREE-TEST", label: "Offre personnelle", percentOff: 100, discountCents: 1425, totalCents: 0,
+  } }));
+  let submitted = "";
+  await page.route("**/api/checkout", async route => {
+    submitted = route.request().postData() || "";
+    await route.fulfill({ status: 409, json: { error: "Test : informations conservées." } });
+  });
+  await couponCheckout(page);
+  await page.getByLabel("Code promo", { exact: true }).fill("private-free-test");
+  await page.getByRole("button", { name: "Appliquer", exact: true }).click();
+  await expect(page.locator("#summary-total")).toHaveText(/0,00/);
+  await expect(page.locator("#payment-note")).toContainText("sans carte bancaire ni débit");
+  await page.locator('[name="termsConsent"]').check();
+  await page.getByRole("button", { name: "Confirmer ma commande gratuite" }).click();
+  await expect(page.locator("#form-error")).toContainText("informations conservées");
+  expect(submitted).toContain('name="couponCode"\r\n\r\nprivate-free-test');
+  expect(submitted).toContain('name="couponExpectedTotal"\r\n\r\n0');
+  await expect(page.getByLabel("Code promo", { exact: true })).toHaveValue("private-free-test");
+  await page.route("**/api/order-status", route => route.fulfill({ json: { status: "paid", free: true, reference: "TESTFREE" } }));
+  await page.goto("/confirmation");
+  await expect(page.locator("#status-copy")).toContainText("Aucun paiement n’a été nécessaire");
+  await expect(page.locator("#follow-cards")).toBeVisible();
+});
+
+test("invalid codes and stale coupon responses never change the payable price", async ({ page }) => {
+  let finishPreview: (() => void) | undefined;
+  await page.route("**/api/coupon", async route => {
+    if (route.request().postDataJSON().code === "INVALID") {
+      await route.fulfill({ status: 400, json: { error: "Ce code n’est pas disponible pour cette commande." } });
+      return;
+    }
+    await new Promise<void>(resolve => { finishPreview = resolve; });
+    await route.fulfill({ json: { code: "WELCOME10", label: "Bienvenue", percentOff: 10, discountCents: 143, totalCents: 1282 } });
+  });
+  await couponCheckout(page);
+  await page.getByLabel("Code promo", { exact: true }).fill("INVALID");
+  await page.getByRole("button", { name: "Appliquer", exact: true }).click();
+  await expect(page.locator("#coupon-message")).toContainText("pas disponible");
+  await expect(page.locator("#summary-total")).toHaveText(/14,25/);
+  await page.locator('[name="termsConsent"]').check();
+  await page.locator("#next-step").click();
+  await expect(page.locator("#form-error")).toContainText("Appliquez votre code");
+  await page.getByLabel("Code promo", { exact: true }).fill("WELCOME10");
+  await page.getByRole("button", { name: "Appliquer", exact: true }).click();
+  await expect.poll(() => !!finishPreview).toBe(true);
+  await page.getByRole("button", { name: "Retirer le code" }).click();
+  finishPreview!();
+  await expect(page.locator("#summary-coupon-row")).toBeHidden();
+  await expect(page.locator("#summary-total")).toHaveText(/14,25/);
+});
 test("home, illustrations, postcard preview, FAQ and navigation work", async ({
   page,
 }, testInfo) => {

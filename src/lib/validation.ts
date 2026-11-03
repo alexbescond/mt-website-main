@@ -73,7 +73,7 @@ export function validateOrder(data: FormData) {
     )
   )
     throw new InputError("Veuillez recharger le formulaire.");
-  const email = value(data, "email", 254);
+  const email = value(data, "email", 254).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new InputError("Vérifiez votre adresse e-mail.");
   const postalCode = value(data, "postalCode", 5);

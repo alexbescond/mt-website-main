@@ -92,6 +92,10 @@ En local : copier `.dev.vars.example` vers `.dev.vars`, y renseigner les secrets
 
 La redirection de succès ne marque jamais une commande comme payée. Le webhook signé est seul responsable de cette transition. Seuls les paiements par carte sont proposés. Les traitements de remboursements/litiges se font dans Stripe et doivent être intégrés à l’exploitation avant l’ouverture.
 
+Les codes sont désormais gérés côté serveur dans D1. Appliquer `0006_coupons.sql` avant cette version du Worker : elle conserve les anciens montants dans `subtotal_cents`, ajoute le montant net `amount_cents` (0 autorisé) et initialise les deux offres. Elle ne reconstruit pas `orders`, ce qui conserve les cartes, sessions de suivi et notifications liées. Cette migration exige le nouveau Worker pour créer des commandes ; prévoir une courte interruption des commandes entre migration et déploiement, et ne pas revenir à un ancien Worker sans adapter son insertion au nouveau schéma.
+
+Vérifier en sandbox `WELCOME10`, le rejet de l’offre privée avec un autre e-mail et sa confirmation à 0 € avec l’adresse autorisée. Les mêmes événements webhook suffisent : une commande gratuite utilise `checkout.session.completed` avec `payment_status=no_payment_required`, sans PaymentIntent ni carte bancaire. Le montant de la commande reste contrôlé. Aucune création de coupon dans le Dashboard Stripe n’est nécessaire. Les commandes offertes confirmées apparaissent aussi dans l’atelier ; `paid` signifie qu’elles sont autorisées à être préparées.
+
 ## Production
 
 Finaliser le vendeur, les conditions, le format/nombre de pages, les délais, les taxes, les modalités de réclamation, le contact confidentialité et l’organisation de la fabrication. Puis configurer un webhook de production avec les secrets de production, `CHECKOUT_MODE=live` et `LEGAL_APPROVED=true`. Ne passer `SITE_INDEXABLE=true` qu’à l’ouverture publique.
