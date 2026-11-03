@@ -34,10 +34,10 @@ import "../styles/order.css";
         <span>1</span> Ses cartes
       </li>
       <li>
-        <span>2</span> La livraison
+        <span>2</span> Le récapitulatif
       </li>
       <li>
-        <span>3</span> Le récapitulatif
+        <span>3</span> Adresse et paiement · Stripe
       </li>
     </ol>
     <div class="order-grid">
@@ -159,100 +159,6 @@ import "../styles/order.css";
         </section>
         <section data-step="1" class="form-panel" hidden>
           <h2 tabindex="-1">
-            À quelle adresse
-            <br />
-            envoyer son aventure ?
-          </h2>
-          <p class="form-intro">
-            Une carte à la fois dans la boîte aux lettres, puis un petit mot à
-            lire ensemble.
-          </p>
-          <div class="field-row">
-            <label class="field">
-              Votre prénom <span class="required">*</span>
-              <input
-                name="firstName"
-                autocomplete="given-name"
-                maxlength="80"
-                required
-              />
-            </label>
-            <label class="field">
-              Votre nom <span class="required">*</span>
-              <input
-                name="lastName"
-                autocomplete="family-name"
-                maxlength="80"
-                required
-              />
-            </label>
-          </div>
-          <label class="field">
-            Votre adresse e-mail <span class="required">*</span>
-            <input
-              name="email"
-              type="email"
-              autocomplete="email"
-              maxlength="254"
-              required
-              placeholder="vous@exemple.fr"
-            />
-            <small>Pour associer votre paiement à votre commande.</small>
-          </label>
-          <label class="field">
-            Adresse de livraison <span class="required">*</span>
-            <input
-              name="address"
-              autocomplete="address-line1"
-              maxlength="150"
-              required
-              placeholder="Numéro et nom de la rue"
-            />
-          </label>
-          <label class="field">
-            Complément d’adresse <span class="optional">facultatif</span>
-            <input
-              name="addressExtra"
-              autocomplete="address-line2"
-              maxlength="150"
-              placeholder="Appartement, bâtiment, étage…"
-            />
-          </label>
-          <div class="field-row">
-            <label class="field">
-              Code postal <span class="required">*</span>
-              <input
-                name="postalCode"
-                autocomplete="postal-code"
-                inputmode="numeric"
-                pattern="[0-9]{5}"
-                maxlength="5"
-                required
-              />
-            </label>
-            <label class="field">
-              Ville <span class="required">*</span>
-              <input
-                name="city"
-                autocomplete="address-level2"
-                maxlength="100"
-                required
-              />
-            </label>
-          </div>
-          <label class="field">
-            Pays
-            <select name="country" autocomplete="country">
-              <option value="FR">France métropolitaine</option>
-            </select>
-            <small>
-              Cette première version propose la livraison en France
-              métropolitaine.
-            </small>
-          </label>
-        </section>
-        <section data-step="2" class="form-panel" hidden>
-          <h2 tabindex="-1">
             Tout est prêt
             <br />
             pour le grand départ.
@@ -277,12 +183,9 @@ import "../styles/order.css";
           <div class="review-section">
             <div>
               <h3>La livraison</h3>
-              <button type="button" class="edit-button" data-edit="1">
-                Modifier
-              </button>
             </div>
-            <p id="review-address"></p>
-            <p id="review-email"></p>
+            <p>Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.</p>
+            <p>Frais de port inclus en France métropolitaine. La même adresse sera utilisée pour toutes les cartes.</p>
           </div>
           <label class="checkbox-field">
             <input type="checkbox" name="termsConsent" required />

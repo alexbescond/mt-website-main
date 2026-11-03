@@ -75,20 +75,10 @@ test("personalization with only the companion photo, editing and no data transmi
     .locator("#pacifierPhoto")
     .setInputFiles("public/images/tetine-transat.webp");
   await page.getByRole("button", { name: "Continuer" }).click();
-  await page.getByLabel("Votre prénom", { exact: false }).fill("Alex");
-  await page.getByLabel("Votre nom", { exact: false }).fill("Exemple");
-  await page.getByLabel("Votre adresse e-mail").fill("parent@example.com");
-  await page
-    .getByLabel("Adresse de livraison", { exact: false })
-    .fill("1 rue du Test");
-  await page.getByLabel("Code postal").fill("75001");
-  await page.getByLabel("Ville", { exact: false }).fill("Paris");
-  await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator("#review-child")).toContainText("Camille");
   await expect(page.locator("#review-photos img")).toHaveCount(1);
   await page.locator('[data-edit="0"]').click();
   await page.getByLabel("Le prénom de votre enfant").fill("Léon");
-  await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator("#review-child")).toContainText("Léon");
   await page.locator('[name="termsConsent"]').check();
@@ -287,13 +277,6 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
   await page.locator('#pacifierPhoto').setInputFiles('public/images/tetine-transat.webp');
   await page.getByRole('button', { name: 'Continuer' }).click();
-  await page.getByLabel('Votre prénom', { exact: false }).fill('Alex');
-  await page.getByLabel('Votre nom', { exact: false }).fill('Exemple');
-  await page.getByLabel('Votre adresse e-mail').fill('parent@example.com');
-  await page.getByLabel('Adresse de livraison', { exact: false }).fill('1 rue du Test');
-  await page.getByLabel('Code postal').fill('75001');
-  await page.getByLabel('Ville', { exact: false }).fill('Paris');
-  await page.getByRole('button', { name: 'Continuer' }).click();
   await expect(page.locator('#review-plan li')).toHaveCount(5);
   await expect(page.locator('#review-plan li').last()).toContainText('+ 28 jours');
   await expect(page.locator('#review-companion')).toContainText('Lapinou');
@@ -304,7 +287,6 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await expect(page.locator('#summary-single')).toBeVisible();
   await expect(page.locator('#summary-cards li')).toHaveCount(0);
   await expect(page.locator('#summary-image')).toHaveAttribute('src', '/images/doudou-safari.webp');
-  await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: 'Continuer' }).click();
   await expect(page.locator('#review-plan li')).toHaveCount(1);
   await expect(page.locator('#review-book')).toContainText('7,00 €');

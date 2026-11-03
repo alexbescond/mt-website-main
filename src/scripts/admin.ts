@@ -28,6 +28,8 @@ function renderOrder(order: AdminOrder) {
   const title = element("div");
   appendChildren(title, element("span", "eyebrow", "COMMANDE " + order.reference), element("h2", "", order.companionName || "Son compagnon"), element("p", "", order.parent + " · Pour " + order.child));
   appendChildren(header, title, element("span", "tracking-badge", progressCopy(order).text)); appendChildren(article, header);
+  const deliveryBlocked = order.deliveryStatus && order.deliveryStatus !== "ready";
+  if (deliveryBlocked) appendChildren(article, element("p", "notice", "Coordonnées de livraison à vérifier dans Stripe : adresse incomplète ou hors France métropolitaine. Préparation et expédition bloquées. Contacter le client avant de poursuivre ou de rembourser."));
   const details = element("details");
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
   const customer = element("div", "admin-customer");
@@ -39,7 +41,7 @@ function renderOrder(order: AdminOrder) {
   } else appendChildren(personal, element("p", "", demo ? "Photo fictive pour cet exemple." : "Photo indisponible ou supprimée selon la durée de conservation."));
   appendChildren(customer, address, personal); appendChildren(details, customer); appendChildren(article, details);
   const first = order.cards[0];
-  if (first && first.state !== "sent") {
+  if (first && first.state !== "sent" && !deliveryBlocked) {
     const schedule = element("form", "admin-schedule");
     const label = element("label", "", "Premier envoi prévu");
     const input = element("input"); input.type = "date"; input.required = true; input.min = parisDate(); input.value = first.planned_date || "";
@@ -66,7 +68,7 @@ function renderOrder(order: AdminOrder) {
     appendChildren(copy, element("h3", "", "Carte " + card.position + " · " + scene.title), badge,
       element("p", "", card.sent_date ? "Expédiée le " + displayDate(card.sent_date) : card.planned_date ? "Départ prévu le " + displayDate(card.planned_date) : "Date à planifier"));
     appendChildren(row, image, copy);
-    if (card.state !== "sent") {
+    if (card.state !== "sent" && !deliveryBlocked) {
       const next = card.state === "queued" ? "preparing" : card.state === "preparing" ? "ready" : "sent";
       const button = element("button", "button button-small", next === "preparing" ? "Commencer la préparation" : next === "ready" ? "Marquer comme prête" : "Marquer comme expédiée");
       button.type = "button";

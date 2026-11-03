@@ -70,16 +70,6 @@ export function validateOrder(data: FormData) {
     )
   )
     throw new InputError("Veuillez recharger le formulaire.");
-  const email = value(data, "email", 254);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    throw new InputError("Vérifiez votre adresse e-mail.");
-  const postalCode = value(data, "postalCode", 5);
-  if (!/^\d{5}$/.test(postalCode) || /^(97|98)/.test(postalCode))
-    throw new InputError("Indiquez un code postal de France métropolitaine.");
-  if (data.get("country") !== "FR")
-    throw new InputError(
-      "La livraison est disponible en France métropolitaine.",
-    );
   if (data.get("termsConsent") !== "on")
     throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
@@ -90,14 +80,7 @@ export function validateOrder(data: FormData) {
     amountCents: pack.totalCents,
     companion,
     companionName,
-    email,
-    postalCode,
     childName: value(data, "childName", 60),
-    firstName: value(data, "firstName", 80),
-    lastName: value(data, "lastName", 80),
-    address: value(data, "address", 150),
-    addressExtra: value(data, "addressExtra", 150, false),
-    city: value(data, "city", 100),
     notes: value(data, "notes", 500, false),
   };
 }

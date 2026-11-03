@@ -110,7 +110,7 @@
   outline: 2px solid #7f9a80;
   outline-offset: 1px;
 }
-.field input:user-invalid {
+.form-panel[data-validated="true"] .field input:invalid {
   border-color: #b95541;
 }
 .field input::placeholder,

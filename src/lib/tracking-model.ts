@@ -21,6 +21,7 @@ export interface TrackingOrder {
   companionName: string;
   quantity: number;
   paidAt: number;
+  deliveryStatus?: "pending" | "ready" | "needs_review";
   cards: TrackingCard[];
 }
 export function parisDate(time = Date.now()) {

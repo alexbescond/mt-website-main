@@ -6,7 +6,8 @@ import baseSchema from "../../migrations/0001_orders.sql?raw";
 import companionSchema from "../../migrations/0002_companions.sql?raw";
 import postcardSchema from "../../migrations/0003_postcards.sql?raw";
 import trackingSchema from "../../migrations/0004_tracking.sql?raw";
-const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema;
+import deliverySchema from "../../migrations/0005_stripe_delivery.sql?raw";
+const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema;
 import { api } from "../../src/lib/api";
 import { cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
@@ -39,14 +40,6 @@ function payload() {
     companion: "tetine",
     companionName: "",
     childName: "Camille",
-    firstName: "Alex",
-    lastName: "Exemple",
-    email: "parent@example.com",
-    address: "1 rue du Test",
-    addressExtra: "",
-    postalCode: "75001",
-    city: "Paris",
-    country: "FR",
     notes: "",
     termsConsent: "on",
   }))
@@ -84,6 +77,8 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
       expect(body.get("line_items[0][quantity]")).toBe(String(quantity));
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
       expect(body.get("success_url")).toBe(`${origin}/confirmation`);
+      expect(body.get("shipping_address_collection[allowed_countries][0]")).toBe("FR");
+      expect(body.has("customer_email")).toBe(false);
       return Response.json({
         id: sessionId,
         url: `https://checkout.stripe.com/c/pay/${sessionId}`,
@@ -99,6 +94,8 @@ async function webhook(
     paid?: string;
     live?: boolean;
     timestamp?: number;
+    shipping?: { name: string; address: { line1?: string; line2?: string; postal_code?: string; city?: string; country?: string } } | null;
+    email?: string | null;
   } = {},
 ) {
   const event = {
@@ -113,6 +110,17 @@ async function webhook(
         payment_status: opts.paid || "paid",
         amount_total: opts.amount ?? 700,
         currency: "eur",
+        collected_information: {
+          shipping_details: opts.shipping === undefined ? {
+            name: "Alex Marie Exemple",
+            address: { line1: "10 rue du Test", line2: "Bâtiment B", postal_code: "75001", city: "Paris", country: "FR" },
+          } : opts.shipping,
+        },
+        customer_details: {
+          email: opts.email === undefined ? "parent@example.com" : opts.email,
+          // Deliberately different: the billing address must not become the delivery address.
+          address: { line1: "99 rue de Facturation", postal_code: "69001", city: "Lyon", country: "FR" },
+        },
       },
     },
   };
@@ -151,6 +159,9 @@ it("stores private photos and one pending order, fixes the amount and reuses ret
     .bind(id)
     .first();
   expect(order?.status).toBe("pending");
+  expect(order?.delivery_status).toBe("pending");
+  expect(order?.address).toBe("");
+  expect(order?.email).toBe("");
   expect(order?.amount_cents).toBe(700);
   expect(order?.child_key).toBe(null);
   expect(await bindings.PHOTOS!.head(`orders/${id}/child`)).toBe(null);
@@ -166,6 +177,7 @@ it("stores private photos and one pending order, fixes the amount and reuses ret
   expect(await status.json()).toEqual({
     status: "pending",
     reference: id.slice(0, 8).toUpperCase(),
+    deliveryStatus: "pending",
   });
 });
 it("confirms only a verified payment and handles retries and expired events without downgrading", async () => {
@@ -193,6 +205,57 @@ it("confirms only a verified payment and handles retries and expired events with
       ).first()
     )?.count,
   ).toBe(1);
+});
+it("saves the Stripe recipient, delivery address and email atomically before preparation", async () => {
+  mockStripe();
+  const form = payload();
+  const id = String(form.get("attemptId"));
+  // A stale or tampered browser form is never the authority for delivery details.
+  form.set("email", "tampered@example.com");
+  form.set("address", "Tampered address");
+  await api(request(form), bindings);
+  expect((await webhook(id)).status).toBe(200);
+  const saved = await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(id).first();
+  expect(saved).toMatchObject({ status: "paid", delivery_status: "ready", recipient_name: "Alex Marie Exemple",
+    first_name: "", last_name: "", email: "parent@example.com", address: "10 rue du Test", address_extra: "Bâtiment B",
+    postal_code: "75001", city: "Paris", country: "FR" });
+  expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM order_cards WHERE order_id=?").bind(id).first())?.n).toBe(1);
+  expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM notification_outbox WHERE order_id=?").bind(id).first())?.n).toBe(1);
+  // Replayed or out-of-order events cannot overwrite the accepted delivery details.
+  expect((await webhook(id, "cs_test_fixture", { shipping: null })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT recipient_name,address,delivery_status FROM orders WHERE id=?").bind(id).first())
+    .toEqual({ recipient_name: "Alex Marie Exemple", address: "10 rue du Test", delivery_status: "ready" });
+});
+
+it.each([
+  null,
+  { name: "Alex", address: { country: "FR" } },
+  { name: "Alex", address: { line1: "1 rue du Test", postal_code: "97400", city: "Saint-Denis", country: "FR" } },
+  { name: "Alex", address: { line1: "1 rue du Test", postal_code: "1000", city: "Bruxelles", country: "BE" } },
+])("records payment but holds unsupported or missing Stripe delivery details for review: %j", async shipping => {
+  mockStripe();
+  const form = payload();
+  const id = String(form.get("attemptId"));
+  await api(request(form), bindings);
+  expect((await webhook(id, "cs_test_fixture", { shipping })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT status,delivery_status FROM orders WHERE id=?").bind(id).first())
+    .toEqual({ status: "paid", delivery_status: "needs_review" });
+  expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM order_cards WHERE order_id=?").bind(id).first())?.n).toBe(1);
+  expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM notification_outbox WHERE order_id=?").bind(id).first())?.n).toBe(0);
+});
+
+it("holds a paid order without a usable email and preserves legacy checkout addresses", async () => {
+  mockStripe();
+  const form = payload();
+  const id = String(form.get("attemptId"));
+  await api(request(form), bindings);
+  expect((await webhook(id, "cs_test_fixture", { email: null })).status).toBe(200);
+  expect((await env.DB.prepare("SELECT delivery_status FROM orders WHERE id=?").bind(id).first())?.delivery_status).toBe("needs_review");
+  // An older pending checkout already has locally collected, validated coordinates.
+  await env.DB.prepare("UPDATE orders SET status='pending',delivery_status='ready',first_name='Alex',last_name='Exemple',address='Ancienne adresse',email='legacy@example.com' WHERE id=?").bind(id).run();
+  expect((await webhook(id, "cs_test_fixture", { shipping: null })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT status,first_name,last_name,address,email,delivery_status FROM orders WHERE id=?").bind(id).first())
+    .toEqual({ status: "paid", first_name: "Alex", last_name: "Exemple", address: "Ancienne adresse", email: "legacy@example.com", delivery_status: "ready" });
 });
 it("rejects tampered signatures, wrong sessions, amounts, modes and stale events", async () => {
   mockStripe();
@@ -259,12 +322,9 @@ it("rejects cross-origin requests, demo payments, live credentials in test mode 
       ?.count,
   ).toBe(0);
 });
-it("rejects unknown adventures, invalid postal codes, spoofed and oversized files", async () => {
+it("rejects unknown adventures, spoofed and oversized files", async () => {
   let form = payload();
   form.set("adventure", "cheap");
-  expect((await api(request(form), bindings)).status).toBe(400);
-  form = payload();
-  form.set("postalCode", "97100");
   expect((await api(request(form), bindings)).status).toBe(400);
   form = payload();
   form.set(
@@ -488,6 +548,7 @@ it("preserves historical book orders and webhook references during the postcard 
   await env.DB.prepare(`INSERT INTO orders (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,postal_code,city,amount_cents,payment_mode,consent_version,created_at,status,stripe_session_id,pacifier_key,companion_type,companion_name) VALUES ('old','hash','token','ski','Camille','Alex','Exemple','parent@example.com','1 rue du Test','75001','Paris',2990,'test','2026-10-21',1,'paid','cs_old','orders/old/pacifier','doudou','Lapinou')`).run();
   await env.DB.prepare("INSERT INTO stripe_events VALUES ('evt_old','old','checkout.session.completed',1)").run();
   await apply(postcardSchema);
-  expect(await env.DB.prepare("SELECT * FROM orders WHERE id='old'").first()).toMatchObject({ id: "old", book: "ski", amount_cents: 2990, product_type: "book", status: "paid", stripe_session_id: "cs_old", access_token: "token", pacifier_key: "orders/old/pacifier", companion_name: "Lapinou" });
+  await apply(deliverySchema);
+  expect(await env.DB.prepare("SELECT * FROM orders WHERE id='old'").first()).toMatchObject({ id: "old", book: "ski", amount_cents: 2990, product_type: "book", status: "paid", stripe_session_id: "cs_old", access_token: "token", pacifier_key: "orders/old/pacifier", companion_name: "Lapinou", first_name: "Alex", last_name: "Exemple", address: "1 rue du Test", recipient_name: "", delivery_status: "ready" });
   expect((await env.DB.prepare("SELECT order_id FROM stripe_events WHERE id='evt_old'").first())?.order_id).toBe("old");
 });
