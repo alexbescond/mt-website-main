@@ -1,3 +1,4 @@
+import { deliveryLabel } from "../lib/catalog";
 import { cardPresentation, cardStates, displayDate, nextDispatch, parisDate, type TrackingOrder } from "../lib/tracking-model";
 import { appendChildren, apiRequest, demoOrder, element, errorText, progressCopy } from "./tracking-common";
 
@@ -9,7 +10,7 @@ let demo = false;
 function render(order: TrackingOrder) {
   const progress = progressCopy(order);
   document.querySelector("#tracking-companion")!.textContent = order.companionName || (order.companion === "doudou" ? "Son doudou" : "Sa tétine");
-  document.querySelector("#tracking-reference")!.textContent = "Commande " + order.reference + " · Paiement confirmé";
+  document.querySelector("#tracking-reference")!.textContent = "Commande " + order.reference + " · Paiement confirmé · " + deliveryLabel(order.quantity, order.deliveryMode);
   document.querySelector("#tracking-progress")!.textContent = progress.text;
   document.querySelector("#tracking-progress-percent")!.textContent = Math.round(progress.count / order.quantity * 100) + " %";
   const bar = document.querySelector<HTMLProgressElement>("#tracking-progress-bar")!;
@@ -20,7 +21,7 @@ function render(order: TrackingOrder) {
     late ? "Une nouvelle date arrive" : next.planned_date ? displayDate(next.planned_date) : "Le premier départ se prépare";
   document.querySelector("#tracking-next-copy")!.textContent = !next ? "L’aventure continue dans votre boîte aux lettres." :
     late ? "Cette carte attend encore son départ. Son expédition sera confirmée ici." :
-    next.planned_date ? "Carte " + next.position + " · Date d’expédition prévue." : "La date sera indiquée ici dès que le planning sera confirmé.";
+    next.planned_date ? (order.deliveryMode === "together" ? "Envoi groupé de toutes les cartes" : "Carte " + next.position) + " · Date d’expédition prévue." : "La date sera indiquée ici dès que le planning sera confirmé.";
   const list = document.querySelector("#tracking-cards")!;
   list.replaceChildren();
   order.cards.forEach(card => {
