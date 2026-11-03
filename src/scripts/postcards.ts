@@ -16,6 +16,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-preview]").forEach((button) 
   document.querySelector("#preview-title")!.textContent = item.title;
   document.querySelector("#preview-front-title")!.textContent = item.title;
   document.querySelector<HTMLImageElement>("#preview-image")!.src = item.image;
+  back.querySelectorAll<HTMLElement>("[data-postage]").forEach((stamp) => {
+    stamp.hidden = stamp.dataset.postage !== id;
+  });
   document.querySelector("#preview-text")!.textContent = id === "ski"
     ? "Aujourd’hui, j’ai fait mes premières traces dans la neige. Mes amis m’ont aidée à me relever, puis nous avons partagé un chocolat chaud. Je t’envoie un flocon de tendresse et je pense très fort à toi !"
     : "Le soleil me chatouille les pieds et la mer est toute bleue. J’ai trouvé un joli coquillage sur la plage. Je l’ai approché de mon oreille : on aurait dit qu’il me racontait une histoire ! Je pense très fort à toi.";
