@@ -7,5 +7,5 @@ interface Env {
   TRACKING_LINK_SECRET?: string;
   RESEND_API_KEY?: string;
 }
-// The demo runs before photo storage is provisioned. Works with or without a generated PHOTOS binding.
+// API handlers also support missing photo storage and refuse checkout in that case.
 type AppEnv = Omit<Env, "PHOTOS"> & { PHOTOS?: R2Bucket };

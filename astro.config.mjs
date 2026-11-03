@@ -2,7 +2,9 @@ import { defineConfig } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 
 export default defineConfig({
-  site: "https://les-vacances-de-ma-tetine.com",
+  site: process.env.CLOUDFLARE_ENV === "production"
+    ? "https://les-aventures-de-doudou-tetine.com"
+    : "https://mt-website-main.alexandre-bescond.workers.dev",
   output: "static",
   build: { format: "file" },
   adapter: cloudflare({ inspectorPort: false, imageService: "compile" }),

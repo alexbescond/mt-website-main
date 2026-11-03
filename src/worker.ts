@@ -55,4 +55,4 @@ export default {
       ]);
     }
   },
-} satisfies ExportedHandler<AppEnv>;
+} satisfies ExportedHandler<Env>;

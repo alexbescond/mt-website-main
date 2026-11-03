@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
     "build": "astro build",
+    "build:production": "CLOUDFLARE_ENV=production astro build",
     "preview": "astro build && wrangler dev --config dist/server/wrangler.json --port 8787",
     "cf-typegen": "wrangler types --strict-vars=false",
     "check:types": "npm run cf-typegen && astro check && tsc --noEmit",
@@ -17,9 +18,11 @@
     "check": "npm run check:types && npm run test && npm run test:e2e",
     "check:deploy": "node scripts/check-deploy.mjs",
     "db:migrate:local": "wrangler d1 migrations apply mt-orders --local",
-    "db:migrate:remote": "wrangler d1 migrations apply mt-orders --remote",
-    "deploy:www": "npm run check && npm run build && npm run check:deploy && npm run db:migrate:remote && wrangler deploy --config dist/server/wrangler.json",
-    "preview:www": "npm run build && wrangler versions upload --config dist/server/wrangler.json"
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --env production",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --remote --env ''",
+    "deploy:www": "npm run check && npm run build:production && npm run check:deploy -- production && npm run db:migrate:remote && wrangler deploy --config dist/server/wrangler.json",
+    "deploy:staging": "npm run check && npm run build && npm run check:deploy -- staging && npm run db:migrate:staging && wrangler deploy --config dist/server/wrangler.json",
+    "preview:www": "npm run build && npm run check:deploy -- staging && wrangler versions upload --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.0",

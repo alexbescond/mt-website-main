@@ -58,7 +58,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: npm run check:deploy
+      - run: npm run build:production
+      - run: npm run check:deploy -- production
       - run: npm run db:migrate:remote
       - run: npx wrangler deploy --config dist/server/wrangler.json

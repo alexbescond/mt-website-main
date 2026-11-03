@@ -2,7 +2,7 @@
 
 ## Essayer en local
 
-Lancer npm run preview puis ouvrir sur http://localhost:8787 :
+Pour la démo sans Stripe, lancer `npm run build` puis `npx wrangler dev --config dist/server/wrangler.json --port 8787 --var CHECKOUT_MODE:demo`, et ouvrir sur http://localhost:8787 :
 
 - /suivi?demo=1 : carnet de voyage fictif du parent ;
 - /admin?demo=1 : atelier interactif, puis lien « Ouvrir le suivi client » pour constater les changements.
@@ -33,8 +33,10 @@ L’API client renvoie les aventures, les états, les dates et le surnom du comp
 
 Configurer deux secrets distincts via les invites sécurisées :
 
-    npx wrangler secret put ADMIN_PASSWORD --name mt-website-main --profile matetine
-    npx wrangler secret put TRACKING_LINK_SECRET --name mt-website-main --profile matetine
+    npx wrangler secret put ADMIN_PASSWORD --env production --name mt-main-production --profile matetine
+    npx wrangler secret put TRACKING_LINK_SECRET --env production --name mt-main-production --profile matetine
+
+Ces commandes ciblent la production. Les secrets sont déjà installés en staging ; pour leur rotation, utiliser `--env '' --name mt-website-main`. Toujours utiliser des valeurs distinctes entre environnements.
 
 Utiliser des valeurs aléatoires conservées dans un gestionnaire de mots de passe : au moins 24 caractères pour ADMIN_PASSWORD, au moins 32 pour TRACKING_LINK_SECRET. Aucun mot de passe par défaut. En local, utiliser .dev.vars (ignoré par Git).
 
@@ -44,16 +46,16 @@ L’atelier contient les filtres de préparation, d’expédition du jour, de co
 
 ## Activer les e-mails Resend
 
-Adresse expéditrice retenue : `no-reply@les-vacances-de-ma-tetine.com` (variable `EMAIL_FROM`). Le domaine `les-vacances-de-ma-tetine.com` doit être actif et vérifié dans Resend avant l’activation des envois.
+Adresse expéditrice retenue : `no-reply@les-aventures-de-doudou-tetine.com` (variable `EMAIL_FROM`). Le domaine `les-aventures-de-doudou-tetine.com` doit être actif et vérifié dans Resend avant l’activation des envois.
 
 Les notifications sont transactionnelles : confirmation de commande, expédition d’une carte, renouvellement du lien. Aucun e-mail marketing, aucune photo ou donnée d’enfant dans les e-mails.
 
 1. Ajouter et vérifier le domaine expéditeur dans Resend. Installer les enregistrements DNS indiqués par Resend (SPF et DKIM), puis configurer DMARC. Choisir une adresse de réponse réellement consultée. Désactiver le suivi des ouvertures et des clics pour ces e-mails contenant un lien d’accès privé.
 2. Créer une clé API Resend avec la permission d’envoi, limitée au domaine du site. La conserver dans un gestionnaire de mots de passe, jamais dans Git ni dans le chat. L’installer dans le Worker avec l’invite sécurisée :
 
-       npx wrangler secret put RESEND_API_KEY --name mt-website-main --profile matetine
+       npx wrangler secret put RESEND_API_KEY --env production --name mt-main-production --profile matetine
 
-3. Renseigner EMAIL_FROM avec une adresse du domaine vérifié et EMAIL_REPLY_TO avec l’adresse de réponse, puis EMAIL_ENABLED=true dans wrangler.jsonc. TRACKING_LINK_SECRET doit être configuré. Aucun binding Cloudflare send_email n’est nécessaire.
+3. Renseigner EMAIL_FROM avec une adresse du domaine vérifié et EMAIL_REPLY_TO avec l’adresse de réponse, puis EMAIL_ENABLED=true dans `env.production.vars` de wrangler.jsonc. TRACKING_LINK_SECRET doit être configuré. Activer les crons de production `*/5 * * * *` (notifications) et `17 3 * * *` (rétention) avant les ventes ; aucun cron n’est actif en production démo. Vérifier le quota disponible du compte. Aucun binding Cloudflare send_email n’est nécessaire.
 4. Appliquer les migrations et déployer après les contrôles habituels. Les contrôles de déploiement live exigent l’expéditeur, RESEND_API_KEY et les noms des secrets de suivi. Ils ne prouvent pas que la clé API est valide ni que le domaine est vérifié.
 5. Vérifier une confirmation et une expédition avec une adresse réellement contrôlée. Les tests automatisés simulent l’API Resend et n’envoient rien.
 
