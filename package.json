@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "check": "npm run check:types && npm run test && npm run test:e2e",
     "check:deploy": "node scripts/check-deploy.mjs",
+    "check:payments": "npm run build:production && node scripts/check-deploy.mjs production --require-live",
     "db:migrate:local": "wrangler d1 migrations apply mt-orders --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote --env production",
     "db:migrate:staging": "wrangler d1 migrations apply DB --remote --env ''",

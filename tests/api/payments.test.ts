@@ -11,7 +11,7 @@ import stripeDeliverySchema from "../../migrations/0006_stripe_delivery.sql?raw"
 import couponSchema from "../../migrations/0007_coupons.sql?raw";
 const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema + "\n" + couponSchema;
 import { api } from "../../src/lib/api";
-import { cleanupOrders, stripeClient } from "../../src/lib/payments";
+import { checkoutAvailable, cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto, sha256 } from "../../src/lib/validation";
 
 const origin = "https://les-aventures-de-doudou-tetine.com";
@@ -19,6 +19,18 @@ const bindings: AppEnv = {
   ...env,
   PHOTOS: (env as unknown as { PHOTOS: R2Bucket }).PHOTOS,
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) },
+};
+const liveBindings: AppEnv = {
+  ...bindings,
+  CHECKOUT_MODE: "live",
+  // Seller information is explicitly being completed separately from payment setup.
+  LEGAL_APPROVED: "false",
+  STRIPE_SECRET_KEY: "sk_live_fixture_not_a_real_key",
+  EMAIL_ENABLED: "true",
+  EMAIL_FROM: "orders@example.com",
+  RESEND_API_KEY: "re_fixture_not_a_real_key",
+  ADMIN_PASSWORD: "fixture_admin_password_long_enough",
+  TRACKING_LINK_SECRET: "fixture_tracking_secret_long_enough",
 };
 beforeEach(async () => {
   await env.DB.batch(
@@ -101,6 +113,7 @@ async function webhook(
     shipping?: { name: string; address: { line1?: string; line2?: string; postal_code?: string; city?: string; country?: string } } | null;
     email?: string | null;
   } = {},
+  webhookBindings: AppEnv = bindings,
 ) {
   const event = {
     id: "evt_fixture",
@@ -130,10 +143,10 @@ async function webhook(
   };
   const body = JSON.stringify(event);
   const signature = await stripeClient(
-    bindings,
+    webhookBindings,
   ).webhooks.generateTestHeaderStringAsync({
     payload: body,
-    secret: bindings.STRIPE_WEBHOOK_SECRET!,
+    secret: webhookBindings.STRIPE_WEBHOOK_SECRET!,
     timestamp: opts.timestamp,
     cryptoProvider: (
       await import("stripe")
@@ -145,9 +158,59 @@ async function webhook(
       headers: { "Stripe-Signature": signature },
       body,
     }),
-    bindings,
+    webhookBindings,
   );
 }
+it.each(["sk_live_fixture", "rk_live_fixture"])("creates a live checkout with %s and fulfills only its signed live payment", async (key) => {
+  const paymentBindings = { ...liveBindings, STRIPE_SECRET_KEY: key };
+  const stripe = mockStripe("cs_live_fixture");
+  const form = payload();
+  const id = String(form.get("attemptId"));
+  expect(checkoutAvailable(paymentBindings, new URL(origin))).toBe(true);
+  expect((await api(request(form), paymentBindings)).status).toBe(200);
+  expect(stripe).toHaveBeenCalledOnce();
+  expect(await env.DB.prepare("SELECT status,payment_mode FROM orders WHERE id=?").bind(id).first())
+    .toEqual({ status: "pending", payment_mode: "live" });
+  expect((await webhook(id, "cs_live_fixture", {}, paymentBindings)).status).toBe(409);
+  expect((await webhook(id, "cs_live_fixture", { live: true }, paymentBindings)).status).toBe(200);
+  expect((await webhook(id, "cs_live_fixture", { live: true }, paymentBindings)).status).toBe(200);
+  expect((await env.DB.prepare("SELECT status FROM orders WHERE id=?").bind(id).first())?.status).toBe("paid");
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards WHERE order_id=?").bind(id).first())?.n).toBe(1);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE order_id=?").bind(id).first())?.n).toBe(1);
+});
+
+it.each([
+  { STRIPE_SECRET_KEY: "sk_test_fixture" },
+  { STRIPE_SECRET_KEY: "rk_test_fixture" },
+  { STRIPE_SECRET_KEY: "pk_live_fixture" },
+  { STRIPE_WEBHOOK_SECRET: undefined },
+  { EMAIL_ENABLED: "false" },
+  { RESEND_API_KEY: undefined },
+  { EMAIL_FROM: "invalid" },
+  { ADMIN_PASSWORD: "too-short" },
+  { TRACKING_LINK_SECRET: "too-short" },
+  { PHOTOS: undefined },
+])("refuses live checkout before writing data when launch configuration is incomplete: %j", async (override) => {
+  const stripe = mockStripe();
+  const incomplete = { ...liveBindings, ...override };
+  expect(await (await api(new Request(`${origin}/api/config`), incomplete)).json())
+    .toEqual({ mode: "live", available: false });
+  expect((await api(request(payload()), incomplete)).status).toBe(503);
+  expect(stripe).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(0);
+  expect((await bindings.PHOTOS!.list()).objects).toEqual([]);
+});
+
+it("allows local sandbox checkout but never real payments over localhost, HTTP or a preview domain", () => {
+  expect(checkoutAvailable(bindings, new URL("http://localhost:8787"))).toBe(true);
+  expect(checkoutAvailable({ ...bindings, STRIPE_SECRET_KEY: "rk_test_fixture" }, new URL("http://localhost:8787"))).toBe(true);
+  expect(checkoutAvailable({ ...bindings, STRIPE_SECRET_KEY: "rk_live_fixture" }, new URL("http://localhost:8787"))).toBe(false);
+  for (const url of ["http://localhost:8787", "https://127.0.0.1", "https://preview.example.com", origin.replace("https:", "http:")]) {
+    expect(checkoutAvailable(liveBindings, new URL(url))).toBe(false);
+  }
+  expect(checkoutAvailable({ ...liveBindings, SITE_ORIGIN: "http://example.com" }, new URL("http://example.com"))).toBe(false);
+});
+
 it("stores private photos and one pending order, fixes the amount and reuses retried checkout", async () => {
   const fetch = mockStripe();
   const form = payload();

@@ -38,15 +38,15 @@
       // Only the custom domain, protected by Cloudflare Access, serves production.
       "workers_dev": false,
       "preview_urls": false,
-      // No orders or emails in the private production demo. Add both schedules before live sales.
-      "triggers": { "crons": [] },
+      // Live order notifications and private-photo retention.
+      "triggers": { "crons": ["17 3 * * *", "*/5 * * * *"] },
       "routes": [{ "pattern": "les-aventures-de-doudou-tetine.com/*", "zone_name": "les-aventures-de-doudou-tetine.com" }],
       "vars": {
         "SITE_ORIGIN": "https://les-aventures-de-doudou-tetine.com",
-        "CHECKOUT_MODE": "demo",
+        "CHECKOUT_MODE": "live",
         "SITE_INDEXABLE": "false",
         "LEGAL_APPROVED": "false",
-        "EMAIL_ENABLED": "false",
+        "EMAIL_ENABLED": "true",
         "EMAIL_FROM": "no-reply@les-aventures-de-doudou-tetine.com",
         "EMAIL_REPLY_TO": ""
       },
