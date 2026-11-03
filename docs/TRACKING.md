@@ -85,7 +85,7 @@ La fabrication, l’impression et le dépôt postal restent manuels. Aucun trans
 
 Une annulation, un remboursement ou un changement d’adresse après paiement nécessitent encore un traitement opérateur hors de cet écran. L’atelier ne doit pas être utilisé pour expédier une commande remboursée sans vérification.
 
-Les expéditions peuvent être annulées depuis le menu de statut, en commençant par la dernière carte expédiée. Le retour en arrière efface la date réelle et conserve les dates prévues. Il est temporairement bloqué pendant l’envoi d’un e-mail. Une notification jamais tentée est supprimée et sera recréée à la prochaine expédition. Une notification déjà tentée est conservée pour éviter un doublon, mais ses relances sont annulées ; un e-mail déjà envoyé ne peut pas être rappelé.
+Les expéditions hebdomadaires peuvent être annulées depuis le menu de statut, en commençant par la dernière carte expédiée. Pour un envoi groupé, revenir en arrière sur une carte applique le nouveau statut à toutes les cartes du groupe. Le retour en arrière efface la date réelle et conserve les dates prévues. Il est temporairement bloqué pendant l’envoi d’un e-mail. Une notification jamais tentée est supprimée et sera recréée à la prochaine expédition. Une notification déjà tentée est conservée pour éviter un doublon, mais ses relances sont annulées ; un e-mail déjà envoyé ne peut pas être rappelé.
 
 Documentation officielle :
 

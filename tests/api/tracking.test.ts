@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
+import delivery from "../../migrations/0005_delivery_mode.sql?raw";
 import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
@@ -18,7 +19,7 @@ const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false"
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) } };
 beforeEach(async () => {
-  await env.DB.batch([base, companions, postcards, tracking].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await env.DB.batch([base, companions, postcards, tracking, delivery].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
 });
 afterEach(async () => { vi.restoreAllMocks(); await reset(); });
 function call(path: string, body?: unknown, cookie?: string, custom = bindings, requestOrigin = origin) {
@@ -292,4 +293,61 @@ it("uses different idempotency keys for confirmations, dispatches and recovery e
   expect(message.html).not.toContain("<script>");
   expect(message.html).toContain("&lt;script&gt;");
   expect(message.text).toContain("https://example.com/#x");
+});
+
+it("schedules grouped cards together and dispatches all ready cards once with one notification", async () => {
+  const id = await paidOrder();
+  await env.DB.prepare("UPDATE orders SET delivery_mode='together' WHERE id=?").bind(id).run();
+  const cookie = await admin();
+  const path = "/api/admin/orders/" + id;
+  const today = parisDate();
+  expect((await call(path + "/schedule", { date: today, version: 0 }, cookie)).status).toBe(200);
+  const cards = (await env.DB.prepare("SELECT * FROM order_cards WHERE order_id=?").bind(id).all()).results;
+  expect(cards.map(card => card.planned_date)).toEqual([today, today, today]);
+  await env.DB.prepare("UPDATE order_cards SET state='ready' WHERE order_id=? AND position=1").bind(id).run();
+  expect((await call(path + "/cards/1", { state: "sent", version: 1, sentDate: today }, cookie)).status).toBe(409);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards WHERE state='sent'").first())?.n).toBe(0);
+  await env.DB.prepare("UPDATE order_cards SET state='ready' WHERE order_id=?").bind(id).run();
+  expect((await call(path + "/cards/1", { state: "sent", version: 0, sentDate: today }, cookie)).status).toBe(409);
+  const results = await Promise.all([
+    call(path + "/cards/2", { state: "sent", version: 1, sentDate: today }, cookie),
+    call(path + "/cards/1", { state: "sent", version: 1, sentDate: today }, cookie),
+  ]);
+  expect(results.map(result => result.status).sort()).toEqual([200, 409]);
+  const sent = (await env.DB.prepare("SELECT state,sent_date FROM order_cards WHERE order_id=?").bind(id).all()).results;
+  expect(sent).toEqual(Array(3).fill({ state: "sent", sent_date: today }));
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(1);
+  const customer = await call("/api/tracking", undefined, await access(id));
+  expect(await customer.json()).toMatchObject({ deliveryMode: "together" });
+});
+it("rolls back grouped dispatches atomically from any card and cancels the shared notification", async () => {
+  const id = await paidOrder();
+  await env.DB.prepare("UPDATE orders SET delivery_mode='together' WHERE id=?").bind(id).run();
+  await env.DB.prepare("UPDATE order_cards SET state='ready' WHERE order_id=?").bind(id).run();
+  const cookie = await admin();
+  const path = "/api/admin/orders/" + id + "/cards/";
+  expect((await call(path + 2, { state: "sent", version: 0, sentDate: parisDate() }, cookie)).status).toBe(200);
+  expect((await call(path + 2, { state: "ready", version: 0 }, cookie)).status).toBe(409);
+  await env.DB.prepare("UPDATE notification_outbox SET status='sending' WHERE kind='shipped'").run();
+  expect((await call(path + 3, { state: "ready", version: 1 }, cookie)).status).toBe(409);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards WHERE state='sent'").first())?.n).toBe(3);
+  await env.DB.prepare("UPDATE notification_outbox SET status='pending' WHERE kind='shipped'").run();
+  expect((await call(path + 2, { state: "ready", version: 1 }, cookie)).status).toBe(200);
+  const cards = await env.DB.prepare("SELECT state,sent_date,version FROM order_cards WHERE order_id=?").bind(id).all();
+  expect(cards.results).toEqual(Array(3).fill({ state: "ready", sent_date: null, version: 2 }));
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(0);
+  expect((await call(path + 1, { state: "sent", version: 2, sentDate: parisDate() }, cookie)).status).toBe(200);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox WHERE kind='shipped'").first())?.n).toBe(1);
+});
+it("uses grouped delivery wording in confirmation and shipping emails", async () => {
+  const id = await paidOrder("live");
+  await env.DB.prepare("UPDATE orders SET delivery_mode='together' WHERE id=?").bind(id).run();
+  const send = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "grouped-message" }));
+  await sendNotifications({ ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture" });
+  const message = JSON.parse(send.mock.calls[0][1]!.body as string);
+  expect(message.text).toContain("un seul envoi");
+  expect(message.text).not.toContain("jours d’intervalle");
+  const shipped = notificationMessage("shipped", "EXAMPLE", origin + "/suivi", 1, parisDate(), "together");
+  expect(shipped.subject).toContain("Vos cartes ont été expédiées");
+  expect(shipped.text).toContain("toutes vos cartes dans un seul envoi");
 });

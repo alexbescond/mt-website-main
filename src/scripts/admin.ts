@@ -1,3 +1,4 @@
+import { deliveryLabel } from "../lib/catalog";
 import { addDays, cardPresentation, cardStates, displayDate, parisDate, type TrackingCard } from "../lib/tracking-model";
 import type { AdminOrder } from "../lib/tracking";
 import { appendChildren, apiRequest, demoOrder, element, errorText, progressCopy, saveDemo } from "./tracking-common";
@@ -12,6 +13,12 @@ async function mutate(order: AdminOrder, card: TrackingCard, state: TrackingCard
   if (demo) {
     const current = demoOrder();
     const target = current.cards.find(item => item.position === card.position)!;
+    if (current.deliveryMode === "together" && (state === "sent" || target.state === "sent")) {
+      if (state === "sent" && current.cards.some(item => item.state !== "ready"))
+        throw new Error("Toutes les cartes doivent être prêtes avant l’envoi groupé.");
+      current.cards.forEach(item => { item.state = state; item.sent_date = state === "sent" ? sentDate! : null; item.version++; });
+      saveDemo(current); return;
+    }
     if (state === "sent" && current.cards.some(item => item.position < card.position && item.state !== "sent"))
       throw new Error("Expédiez d’abord les cartes précédentes.");
     if (state !== "sent" && target.state === "sent" && current.cards.some(item => item.position > card.position && item.state === "sent"))
@@ -30,6 +37,7 @@ function renderOrder(order: AdminOrder) {
   const title = element("div");
   appendChildren(title, element("span", "eyebrow", "COMMANDE " + order.reference), element("h2", "", order.companionName || "Son compagnon"), element("p", "", order.parent + " · Pour " + order.child));
   appendChildren(header, title, element("span", "tracking-badge", progressCopy(order).text)); appendChildren(article, header);
+  appendChildren(article, element("p", "summary-cadence", deliveryLabel(order.quantity, order.deliveryMode)));
   const details = element("details");
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
   const customer = element("div", "admin-customer");
@@ -40,6 +48,7 @@ function renderOrder(order: AdminOrder) {
     photo.href = "/api/admin/orders/" + order.id + "/photo"; photo.target = "_blank"; photo.rel = "noopener"; appendChildren(personal, photo);
   } else appendChildren(personal, element("p", "", demo ? "Photo fictive pour cet exemple." : "Photo indisponible ou supprimée selon la durée de conservation."));
   appendChildren(customer, address, personal); appendChildren(details, customer); appendChildren(article, details);
+  if (order.deliveryMode === "together") appendChildren(article, element("p", "admin-email-note", "Toutes les cartes doivent être prêtes avant l’envoi groupé. Revenir en arrière après l’expédition modifie le statut de toutes les cartes."));
   const first = order.cards[0];
   if (first && first.state !== "sent") {
     const schedule = element("form", "admin-schedule");
@@ -53,7 +62,7 @@ function renderOrder(order: AdminOrder) {
       try {
         if (demo) {
           const current = demoOrder();
-          current.cards.forEach(card => { card.planned_date = addDays(input.value, (card.position - 1) * 7); card.version++; });
+          current.cards.forEach(card => { card.planned_date = addDays(input.value, current.deliveryMode === "together" ? 0 : (card.position - 1) * 7); card.version++; });
           saveDemo(current);
         } else await apiRequest("/api/admin/orders/" + order.id + "/schedule", { date: input.value, version: first.version });
         await load(); message.textContent = "Le planning est à jour.";
@@ -73,6 +82,10 @@ function renderOrder(order: AdminOrder) {
     select.setAttribute("aria-label", "Statut de la carte " + card.position + " · Commande " + order.reference);
     Object.entries(cardStates).forEach(([value, label]) => {
       const option = element("option", "", label); option.value = value;
+      if (value === "sent" && order.deliveryMode === "together") {
+        option.textContent = "Expédiées ensemble";
+        option.disabled = card.state !== "sent" && order.cards.some(item => item.state !== "ready");
+      }
       appendChildren(select, option);
     });
     select.value = card.state;
@@ -82,7 +95,10 @@ function renderOrder(order: AdminOrder) {
       if (next === "sent") {
         select.value = card.state;
         selected = { order, card };
-        document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + " · Carte " + card.position + " · " + scene.title;
+        document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + (order.deliveryMode === "together" ? " · Envoi groupé de toutes les cartes" : " · Carte " + card.position + " · " + scene.title);
+        document.querySelector("#dispatch-explanation")!.textContent = order.deliveryMode === "together"
+          ? "Toutes les cartes seront marquées comme expédiées à cette date. Le suivi du parent sera mis à jour pour cet envoi groupé."
+          : "Le suivi du parent sera mis à jour. Les cartes suivantes seront planifiées à 7 jours d’intervalle à partir de ce départ.";
         const date = document.querySelector<HTMLInputElement>("#dispatch-date")!;
         date.max = parisDate(); date.value = parisDate();
         date.min = order.cards[card.position - 2]?.sent_date || parisDate(order.paidAt);
