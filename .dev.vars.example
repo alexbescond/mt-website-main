@@ -2,3 +2,7 @@
 # The demo works without any credentials. Never commit real secret values.
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+ADMIN_PASSWORD=
+TRACKING_LINK_SECRET=
+# Resend is used only when CHECKOUT_MODE=live and EMAIL_ENABLED=true.
+RESEND_API_KEY=

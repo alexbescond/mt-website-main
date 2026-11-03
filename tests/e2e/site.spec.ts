@@ -74,7 +74,6 @@ test("personalization with only the companion photo, editing and no data transmi
   await page
     .locator("#pacifierPhoto")
     .setInputFiles("public/images/tetine-transat.webp");
-  await page.locator('[name="photoConsent"]').check();
   await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByLabel("Votre prénom", { exact: false }).fill("Alex");
   await page.getByLabel("Votre nom", { exact: false }).fill("Exemple");
@@ -287,7 +286,6 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await page.getByLabel("Le prénom de votre enfant").fill("Camille");
   await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
   await page.locator('#pacifierPhoto').setInputFiles('public/images/tetine-transat.webp');
-  await page.locator('[name="photoConsent"]').check();
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByLabel('Votre prénom', { exact: false }).fill('Alex');
   await page.getByLabel('Votre nom', { exact: false }).fill('Exemple');

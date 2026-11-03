@@ -12,9 +12,7 @@ Site de **cartes postales papier personnalisées** avec le doudou ou la tétine 
 
 La grille est définie dans `src/lib/catalog.ts` et recalculée côté serveur. Aucun abonnement ni renouvellement automatique.
 
-Domaine prévu (pas encore acheté) : **https://les-vacances-de-ma-tetine.com**. La démonstration utilise une URL provisoire `workers.dev`, protégée par Cloudflare Access et réservée à `alexandre.bescond@protonmail.com`.
-
-**Démonstration publiée : https://mt-website-main.alexandre-bescond.workers.dev**
+Domaine de production : **https://les-aventures-de-doudou-tetine.com**, toujours en démonstration privée. **Staging Stripe test : https://mt-website-main.alexandre-bescond.workers.dev**. Deux Workers, bases D1, buckets R2 privés et espaces KV distincts ; les deux sites restent protégés par Cloudflare Access. Seul le webhook Stripe du staging dispose d’une exception, avec signature obligatoire.
 
 ## Démarrer
 
@@ -26,7 +24,9 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Le mode `demo` fonctionne sans secret : toutes les étapes sont accessibles, les photos restent en mémoire dans le navigateur, aucun paiement ni aucune commande ne sont créés. `npm run preview` compile puis sert le Worker sur http://localhost:8787.
+`npm run preview` compile puis sert le Worker sur http://localhost:8787 en mode `test` ; renseigner les secrets sandbox dans `.dev.vars` pour Stripe. Pour une démo sans secrets, exécuter `npm run build` puis `npx wrangler dev --config dist/server/wrangler.json --port 8787 --var CHECKOUT_MODE:demo` : les photos restent dans le navigateur et aucune commande n’est créée.
+
+Les releases passent par GitHub : une PR fusionnée dans `main` déploie le staging après les tests ; une PR `main` → `prod` fusionnée avec un commit de merge déploie la production après les tests. Les environnements GitHub sont séparés et disposent chacun du secret de déploiement Cloudflare. Voir [le circuit de release](DEPLOY.md#circuit-de-release). Les commandes locales `npm run deploy:staging` et `npm run deploy:www` restent disponibles pour le dépannage.
 
 ## Ce qui est implémenté
 
@@ -38,6 +38,12 @@ Le mode `demo` fonctionne sans secret : toutes les étapes sont accessibles, les
 - Polices locales, images WebP, CSP, robots/noindex sur les aperçus, aucun traqueur.
 - GitHub Actions : types, tests dans le runtime Worker, parcours Playwright desktop/mobile, audit puis déploiement conditionnel de `main`.
 
+## Suivi des cartes
+
+Le parent retrouve ses cartes dans `/suivi`, grâce à un lien privé reçu par e-mail ou depuis sa confirmation de paiement. L’atelier `/admin` permet de planifier les départs et de faire avancer chaque carte : à venir, en préparation, prête à partir, expédiée.
+
+En mode démonstration, essayer `/suivi?demo=1` et `/admin?demo=1`. Les changements fictifs se partagent dans le même onglet ; aucun e-mail n’est envoyé. Voir [le guide du suivi](docs/TRACKING.md) pour les accès privés, les migrations et l’activation des notifications.
+
 ## Vérifier
 
 ```sh
@@ -46,7 +52,7 @@ npm run check
 npm audit --audit-level=high
 ```
 
-Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe simulé. Playwright construit le Worker et utilise des ressources isolées et un fichier de secrets vide. Aucune API Stripe réelle ni ressource de production n’est appelée par les tests.
+Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe et Resend simulés. Playwright construit le Worker et utilise des ressources isolées et un fichier de secrets vide. Aucune API Stripe ou Resend réelle ni ressource de production n’est appelée par les tests.
 
 ## Organisation
 
@@ -64,9 +70,9 @@ Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe simulé. 
 
 ## Avant l’ouverture des ventes
 
-Le site démarre volontairement en démonstration sur le compte Cloudflare personnel : D1 et KV sont provisionnés. Il reste à activer R2 pour les photos, connecter un compte Stripe, acheter et relier le domaine, puis fixer les caractéristiques des cartes, les délais, le vendeur et les conditions de vente. Les textes de `/informations` sont des informations de préparation et doivent être finalisés.
+Le staging est connecté à Stripe sandbox et un parcours de paiement a été validé sur l’URL hébergée. D1, R2 et KV sont provisionnés séparément pour staging et production ; le domaine Cloudflare et le domaine expéditeur Resend sont vérifiés. La production reste volontairement en démonstration privée. Avant les ventes, il reste à activer Stripe réel, les secrets et notifications de production, fixer les caractéristiques des cartes, les délais, le vendeur et les conditions de vente, puis autoriser l’ouverture publique. Les textes de `/informations` doivent être finalisés.
 
-La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Aucun e-mail automatique n’est envoyé par ce code ; les reçus peuvent être activés dans Stripe.
+La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Le suivi client et l’atelier de préparation sont implémentés, avec une file de confirmations et de notifications d’expédition. Les e-mails restent désactivés tant que Resend (clé API) et le domaine expéditeur ne sont pas configurés. Les reçus Stripe sont indépendants.
 
 Voir [DEPLOY.md](DEPLOY.md) pour le déploiement, Stripe et le traitement d’une commande. Les images fournies et le visuel de ski sont décrits dans [docs/ASSETS.md](docs/ASSETS.md).
 
@@ -76,7 +82,7 @@ La migration `0003_postcards.sql` reconstruit la table `orders` pour retirer la 
 
 Le nom `pacifierPhoto` et la clé R2 `pacifier` sont conservés pour les deux types de compagnons. Ni prénom, surnom ni photo ne sont transmis à Stripe. Le serveur impose la quantité de 1 à 5, le nombre exact d’aventures et le tarif correspondant ; le webhook vérifie le total enregistré. Les expéditions sont espacées de 7 jours après le premier départ, sans garantir des dates de réception identiques aux dates d’expédition.
 
-La configuration Cloudflare, le mode démo et les workflows de déploiement sont inchangés. Les fichiers de `conductor-handoff/` sont une archive de l’ancienne refonte livres et ne décrivent plus l’offre actuelle.
+Les fichiers de `conductor-handoff/` sont une archive de l’ancienne refonte livres et ne décrivent plus l’offre actuelle. La configuration et les environnements actuels sont décrits dans [DEPLOY.md](DEPLOY.md).
 
 ## Hypothèses économiques à confirmer
 

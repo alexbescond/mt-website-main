@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/tracking.css";
+---
+<Base title="L’atelier des cartes" minimal>
+  <section class="wrap tracking-page admin-page">
+    <div id="demo-banner" class="tracking-demo" hidden>
+      <span>Atelier de démonstration · Vos essais restent dans ce navigateur.</span>
+      <a href="/suivi?demo=1">Ouvrir le suivi client →</a>
+      <button id="reset-demo" type="button" class="tracking-text-button">Réinitialiser</button>
+    </div>
+    <header class="tracking-heading">
+      <span class="eyebrow">L’ATELIER DES PETITS VOYAGES</span>
+      <h1>Des cartes à préparer.<br /><em>Des sourires à envoyer.</em></h1>
+      <p>Chaque aventure à sa place, chaque départ au bon moment.</p>
+    </header>
+    <p id="admin-message" class="tracking-message" role="status" aria-live="polite"></p>
+    <section id="admin-login-panel" class="tracking-access" hidden>
+      <div><h2>Votre espace de préparation</h2><p>Connectez-vous pour retrouver les commandes et organiser les expéditions.</p><a id="admin-demo-link" class="tracking-text-button" href="/admin?demo=1" hidden>Essayer l’atelier en démonstration →</a></div>
+      <form id="admin-login" class="tracking-form">
+        <label>Mot de passe de l’atelier<input type="password" name="password" autocomplete="current-password" required /></label>
+        <button class="button" type="submit">Ouvrir l’atelier</button>
+      </form>
+    </section>
+    <section id="admin-content" hidden>
+      <div class="admin-toolbar">
+        <form id="admin-search" class="admin-search">
+          <label class="sr-only" for="search-orders">Rechercher une commande</label>
+          <input id="search-orders" name="search" type="search" placeholder="Référence, nom ou e-mail…" maxlength="100" />
+          <button class="button button-small" type="submit">Rechercher</button>
+        </form>
+        <button id="admin-refresh" class="tracking-text-button" type="button">Actualiser</button>
+        <button id="admin-logout" class="tracking-text-button" type="button">Déconnexion</button>
+      </div>
+      <div class="admin-filters" role="group" aria-label="Filtrer les commandes">
+        <button data-filter="active" aria-pressed="true">À préparer</button>
+        <button data-filter="due" aria-pressed="false">À expédier aujourd’hui</button>
+        <button data-filter="sent" aria-pressed="false">Tout est expédié</button>
+        <button data-filter="all" aria-pressed="false">Toutes les commandes</button>
+      </div>
+      <p id="admin-email-note" class="admin-email-note" hidden>Les e-mails sont désactivés. Les notifications sont conservées en attente d’activation.</p>
+      <div id="admin-orders" class="admin-orders"></div>
+      <nav class="admin-pagination" aria-label="Pages de commandes">
+        <button id="admin-prev" class="tracking-text-button" type="button">← Précédentes</button>
+        <span id="admin-page-number"></span>
+        <button id="admin-next" class="tracking-text-button" type="button">Suivantes →</button>
+      </nav>
+    </section>
+    <dialog id="dispatch-dialog" class="dispatch-dialog">
+      <form id="dispatch-form" class="tracking-form">
+        <span class="eyebrow">UN PETIT MOT PREND LA ROUTE</span>
+        <h2>Confirmer l’expédition</h2>
+        <p id="dispatch-card-title"></p>
+        <label>Date réelle du dépôt à la poste<input id="dispatch-date" type="date" required /></label>
+        <p>Le suivi du parent sera mis à jour et une notification sera préparée. Les cartes suivantes seront planifiées à 7 jours d’intervalle à partir de ce départ.</p>
+        <p id="dispatch-error" role="alert"></p>
+        <div class="dialog-actions"><button id="cancel-dispatch" class="tracking-text-button" type="button">Annuler</button><button class="button" type="submit">Confirmer l’envoi</button></div>
+      </form>
+    </dialog>
+    <noscript><p>Activez JavaScript pour utiliser l’espace de préparation.</p></noscript>
+  </section>
+  <script src="../scripts/admin.ts"></script>
+</Base>

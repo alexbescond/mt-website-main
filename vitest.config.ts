@@ -12,7 +12,7 @@ export default defineConfig({
         r2Buckets: ["PHOTOS"],
         kvNamespaces: ["SESSION"],
         bindings: {
-          SITE_ORIGIN: "https://les-vacances-de-ma-tetine.com",
+          SITE_ORIGIN: "https://les-aventures-de-doudou-tetine.com",
           CHECKOUT_MODE: "test",
           LEGAL_APPROVED: "false",
           SITE_INDEXABLE: "false",

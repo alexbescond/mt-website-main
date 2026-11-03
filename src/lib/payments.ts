@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { paidOrderStatements } from "./tracking";
 import { companions, SEND_INTERVAL_DAYS } from "./catalog";
 import {
   InputError,
@@ -262,6 +263,7 @@ export async function stripeWebhook(request: Request, env: AppEnv) {
       : env.DB.prepare(
           "UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ?",
         ).bind(Date.now(), id),
+    ...(!expired ? paidOrderStatements(env, id, Date.now()) : []),
   ]);
   return Response.json({ received: true });
 }
