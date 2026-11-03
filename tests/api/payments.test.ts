@@ -88,6 +88,16 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
             : input.url;
       expect(target).toBe("https://api.stripe.com/v1/checkout/sessions");
       const body = new URLSearchParams(String(init?.body));
+      // Stripe only accepts payment_method_collection for subscriptions.
+      // Model its rejection so payment-mode regressions cannot pass this mock.
+      if (body.get("mode") === "payment" && body.has("payment_method_collection")) {
+        return Response.json({ error: {
+          type: "invalid_request_error",
+          param: "payment_method_collection",
+          message: "payment_method_collection can only be set in subscription mode.",
+        } }, { status: 400 });
+      }
+      expect(body.get("mode")).toBe("payment");
       expect(body.get("line_items[0][price_data][unit_amount]")).toBe(String(unitAmount));
       expect(body.get("line_items[0][quantity]")).toBe(String(quantity));
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
@@ -98,7 +108,7 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
         ]));
       expect(body.has("customer_email")).toBe(false);
       expect(body.get("allow_promotion_codes")).toBe("true");
-      expect(body.get("payment_method_collection")).toBe("if_required");
+      expect(body.has("payment_method_collection")).toBe(false);
       return Response.json({
         id: sessionId,
         url: `https://checkout.stripe.com/c/pay/${sessionId}`,

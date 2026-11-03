@@ -184,7 +184,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
       locale: "fr",
       allowed_payment_method_types: ["card"],
       allow_promotion_codes: true,
-      payment_method_collection: "if_required",
+      // Payment-mode Checkout handles 100% discounts without a payment method.
+      // payment_method_collection is only valid for subscriptions.
       shipping_address_collection: { allowed_countries: [...SHIPPING_COUNTRIES] },
       custom_text: {
         shipping_address: { message: "Livraison en France métropolitaine (hors codes postaux 97 et 98), Belgique, Luxembourg et Suisse uniquement. Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
