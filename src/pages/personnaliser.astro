@@ -1,27 +1,28 @@
 ---
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import { books, PRICE_LABEL } from "../lib/catalog";
+import { adventures, companions, dispatchLabel } from "../lib/catalog";
+import CardPacks from "../components/CardPacks.astro";
 import "../styles/order.css";
 ---
 
-<Base title="Créez son livre personnalisé" minimal>
+<Base title="Créez ses cartes postales" minimal>
   <div class="wrap order-page">
     <div class="order-heading">
-      <span class="eyebrow">UNE HISTOIRE QUI N’APPARTIENT QU’À LUI</span>
+      <span class="eyebrow">DES NOUVELLES RIEN QUE POUR LUI</span>
       <h1>
         Préparons le voyage
         <br />
-        de <em>sa tétine.</em>
+        de <em>son compagnon.</em>
       </h1>
-      <p>Les petits détails font les grandes histoires.</p>
+      <p>De 1 à 5 cartes, une aventure à découvrir chaque semaine.</p>
     </div>
     <div id="mode-notice" class="notice" role="status">
       Chargement du parcours…
     </div>
     <noscript>
       <p class="notice">
-        Activez JavaScript pour personnaliser votre livre et joindre vos photos.
+        Activez JavaScript pour personnaliser vos cartes et joindre vos photos.
       </p>
     </noscript>
     <div id="cancel-notice" class="notice" hidden>
@@ -30,7 +31,7 @@ import "../styles/order.css";
     </div>
     <ol class="order-steps" aria-label="Étapes de personnalisation">
       <li aria-current="step">
-        <span>1</span> Son histoire
+        <span>1</span> Ses cartes
       </li>
       <li>
         <span>2</span> La livraison
@@ -44,25 +45,54 @@ import "../styles/order.css";
         <section data-step="0" class="form-panel">
           <h2 tabindex="-1">Faisons connaissance.</h2>
           <p class="form-intro">
-            Tout commence par votre petit grand et sa fidèle complice.
+            Tout commence par votre enfant et le petit héros de son histoire.
           </p>
-          <fieldset class="destination-field">
-            <legend>Quelle destination pour Tétine ?</legend>
-            <div class="destination-options">
-              {Object.entries(books).map(([id, b]) => (
-                <label class="destination-option">
+          <fieldset class="companion-field">
+            <legend>Qui sera le héros de son histoire ?</legend>
+            <div class="companion-options">
+              {Object.entries(companions).map(([id, companion]) => (
+                <label class="companion-option">
                   <input
                     type="radio"
-                    name="book"
+                    name="companion"
                     value={id}
-                    checked={id === "tropiques"}
+                    checked={id === "tetine"}
+                    required
                   />
-                  <img src={b.image} width="150" height="100" alt="" />
-                  <span>{b.short}</span>
-                  <span class="radio-mark" aria-hidden="true"></span>
+                  <strong>{companion.label}</strong>
+                  <span>{companion.description}</span>
                 </label>
               ))}
             </div>
+          </fieldset>
+          <label class="field">
+            Le petit nom de son compagnon{" "}
+            <span class="optional">facultatif</span>
+            <input
+              name="companionName"
+              autocomplete="off"
+              maxlength="60"
+              placeholder="Par exemple, Lapinou ou Titi"
+            />
+            <small>Un surnom que l’on pourra glisser dans l’histoire.</small>
+          </label>
+          <fieldset class="pack-field">
+            <legend>Combien de cartes pour son voyage ?</legend>
+            <CardPacks selectable />
+            <p class="form-intro">Un paiement unique. Frais de port inclus en France métropolitaine. Aucun abonnement.</p>
+          </fieldset>
+          <fieldset class="destination-field">
+            <legend>Ses aventures, dans l’ordre des envois</legend>
+            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Après le premier envoi, les suivants sont espacés de 7 jours.</p>
+            {[0, 1, 2, 3, 4].map((index) => (
+              <label class="field adventure-field" data-card-index={index} hidden={index > 0}>
+                {index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index)}`}
+                <select id={`adventure-${index + 1}`} name="adventure" required disabled={index > 0} aria-describedby="adventure-help">
+                  {Object.entries(adventures).map(([id, item], adventureIndex) => <option value={id} selected={adventureIndex === index}>{item.short}</option>)}
+                </select>
+                {index === 0 && <small>Carte 1 · Premier envoi</small>}
+              </label>
+            ))}
           </fieldset>
           <label class="field">
             Le prénom de votre enfant <span class="required">*</span>
@@ -73,11 +103,12 @@ import "../styles/order.css";
               placeholder="Par exemple, Camille"
               required
             />
-            <small>Il apparaîtra dans son histoire.</small>
+            <small>Il apparaîtra dans les petits mots de son compagnon.</small>
           </label>
           <div class="upload-field">
             <label for="pacifierPhoto">
-              La photo de sa tétine <span class="required">*</span>
+              <span id="companion-photo-label">La photo de sa tétine</span>{" "}
+              <span class="required">*</span>
             </label>
             <p>
               De face, bien éclairée, sur un fond simple : on veut reconnaître
@@ -97,46 +128,12 @@ import "../styles/order.css";
               />
               <img
                 class="upload-preview"
-                alt="Aperçu de la photo de votre tétine"
+                alt="Aperçu de la photo de son compagnon"
                 hidden
               />
             </label>
             <span
               id="pacifier-error"
-              class="field-error"
-              aria-live="polite"
-            ></span>
-          </div>
-          <div class="upload-field">
-            <label for="childPhoto">
-              La photo de votre enfant <span class="optional">facultatif</span>
-            </label>
-            <p>
-              Pour lui faire une petite place dans le livre, aux côtés de
-              Tétine.
-            </p>
-            <label class="upload-zone upload-compact" for="childPhoto">
-              <Icon name="upload" size={24} />
-              <span class="upload-title">Ajouter son portrait</span>
-              <small>JPG, PNG ou WebP · 5 Mo maximum</small>
-              <input
-                id="childPhoto"
-                name="childPhoto"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                aria-describedby="child-error"
-              />
-              <img
-                class="upload-preview"
-                alt="Aperçu du portrait de votre enfant"
-                hidden
-              />
-            </label>
-            <button type="button" id="remove-child" class="remove-photo" hidden>
-              Retirer le portrait
-            </button>
-            <span
-              id="child-error"
               class="field-error"
               aria-live="polite"
             ></span>
@@ -148,15 +145,15 @@ import "../styles/order.css";
               name="notes"
               rows="3"
               maxlength="500"
-              placeholder="Le surnom de sa tétine, une petite habitude, un détail qui compte…"
+              placeholder="Une petite habitude, un détail qui compte, une préférence…"
             ></textarea>
           </label>
           <label class="checkbox-field">
             <input name="photoConsent" type="checkbox" required />
             <span>
               Je suis le parent ou le représentant légal de l’enfant et
-              j’autorise l’utilisation de ces photos uniquement pour créer ce
-              livre.{" "}
+              j’autorise l’utilisation de la photo de son compagnon uniquement
+              pour créer ces cartes.{" "}
               <a
                 href="/informations#confidentialite"
                 target="_blank"
@@ -175,8 +172,8 @@ import "../styles/order.css";
             envoyer son aventure ?
           </h2>
           <p class="form-intro">
-            Un livre à recevoir chez vous, puis à lire tout près l’un de
-            l’autre.
+            Une carte à la fois dans la boîte aux lettres, puis un petit mot à
+            lire ensemble.
           </p>
           <div class="field-row">
             <label class="field">
@@ -273,13 +270,15 @@ import "../styles/order.css";
           </p>
           <div class="review-section">
             <div>
-              <h3>Son histoire</h3>
+              <h3>Ses cartes</h3>
               <button type="button" class="edit-button" data-edit="0">
                 Modifier
               </button>
             </div>
             <p id="review-book"></p>
+            <ol id="review-plan" class="dispatch-plan"></ol>
             <p id="review-child"></p>
+            <p id="review-companion"></p>
             <div class="review-photos" id="review-photos"></div>
             <p id="review-notes"></p>
           </div>
@@ -330,38 +329,44 @@ import "../styles/order.css";
           </button>
         </div>
         <p class="required-note">
-          * Les informations nécessaires à la création de votre livre.
+          * Les informations nécessaires à la création de vos cartes.
         </p>
       </form>
       <aside class="order-summary">
-        <div class="summary-photo">
+        <div class="summary-photo" id="summary-single">
           <img
             id="summary-image"
-            src={books.tropiques.image}
+            src={adventures.tropiques.image}
             width="600"
             height="400"
             alt="Aperçu illustratif de l’aventure choisie"
           />
-          <span>SON PROCHAIN GRAND VOYAGE</span>
+          <span id="summary-caption">EXEMPLE ILLUSTRÉ AVEC TÉTINE</span>
+        </div>
+        <div class="summary-bundle" id="summary-bundle" hidden>
+          <span class="eyebrow">SON VOYAGE, CARTE APRÈS CARTE</span>
+          <ol id="summary-cards" class="summary-cards" aria-label="Aperçus des cartes dans l’ordre des envois"></ol>
+          <p id="summary-bundle-caption" class="summary-bundle-caption"></p>
         </div>
         <div class="summary-body">
-          <span class="eyebrow">UN EXEMPLAIRE RIEN QU’À LUI</span>
-          <h2 id="summary-title">{books.tropiques.title}</h2>
-          <p id="summary-child">L’histoire de sa tétine</p>
+          <span class="eyebrow">SA PETITE CORRESPONDANCE</span>
+          <h2 id="summary-title">{adventures.tropiques.title}</h2>
+          <p id="summary-child">L’histoire de son compagnon</p>
           <ul>
             <li>
-              <Icon name="check" size={17} /> Sa propre tétine dans l’histoire
+              <Icon name="check" size={17} /> Son compagnon sur chaque carte
             </li>
             <li>
-              <Icon name="check" size={17} /> Personnalisé avec son prénom
+              <Icon name="check" size={17} /> Un petit mot avec son prénom
             </li>
             <li>
-              <Icon name="check" size={17} /> Un livre papier à garder
+              <Icon name="check" size={17} /> Une vraie carte postale à garder
             </li>
           </ul>
+          <p id="summary-cadence" class="summary-cadence">Un envoi postal</p>
           <div class="summary-line">
-            <span>Votre livre</span>
-            <span>{PRICE_LABEL}</span>
+            <span id="summary-quantity">1 carte × 7,00 €</span>
+            <span id="summary-subtotal">7,00 €</span>
           </div>
           <div class="summary-line">
             <span>Livraison</span>
@@ -369,10 +374,10 @@ import "../styles/order.css";
           </div>
           <div class="summary-total">
             <span>Total</span>
-            <strong>{PRICE_LABEL}</strong>
+            <strong id="summary-total" aria-live="polite">7,00 €</strong>
           </div>
           <span class="price-provisional">
-            Prix provisoire · France métropolitaine
+            Paiement unique · Aucun abonnement
           </span>
           <div class="summary-reassurance">
             <Icon name="lock" size={17} />

@@ -1,4 +1,4 @@
-import { isBookId } from "./catalog";
+import { isAdventureId, isCompanionId, getCardPack } from "./catalog";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -50,8 +50,19 @@ function value(data: FormData, name: string, max: number, required = true) {
   return text;
 }
 export function validateOrder(data: FormData) {
-  const book = value(data, "book", 20);
-  if (!isBookId(book)) throw new InputError("Choisissez une aventure.");
+  const quantityValue = value(data, "quantity", 1);
+  if (!/^[1-5]$/.test(quantityValue)) throw new InputError("Choisissez de 1 à 5 cartes.");
+  const quantity = Number(quantityValue);
+  const cardAdventures = data.getAll("adventure");
+  if (cardAdventures.length !== quantity || !cardAdventures.every(isAdventureId))
+    throw new InputError("Choisissez une aventure pour chaque carte.");
+  if (new Set(cardAdventures).size !== cardAdventures.length)
+    throw new InputError("Choisissez une aventure différente pour chaque carte.");
+  const pack = getCardPack(quantity);
+  const companion = value(data, "companion", 10);
+  if (!isCompanionId(companion))
+    throw new InputError("Choisissez un doudou ou une tétine.");
+  const companionName = value(data, "companionName", 60, false);
   const attemptId = value(data, "attemptId", 36);
   if (
     !/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(
@@ -70,10 +81,15 @@ export function validateOrder(data: FormData) {
       "La livraison est disponible en France métropolitaine.",
     );
   if (data.get("photoConsent") !== "on" || data.get("termsConsent") !== "on")
-    throw new InputError("Votre accord est nécessaire pour préparer ce livre.");
+    throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
     attemptId,
-    book,
+    quantity,
+    cardAdventures,
+    unitPriceCents: pack.unitCents,
+    amountCents: pack.totalCents,
+    companion,
+    companionName,
     email,
     postalCode,
     childName: value(data, "childName", 60),
@@ -88,9 +104,10 @@ export function validateOrder(data: FormData) {
 export async function validatePhoto(
   entry: FormDataEntryValue | null,
   required: boolean,
+  label = "son compagnon",
 ) {
   if (!(entry instanceof File) || entry.size === 0) {
-    if (required) throw new InputError("Ajoutez une photo de la tétine.");
+    if (required) throw new InputError(`Ajoutez une photo de ${label}.`);
     return null;
   }
   if (entry.size > 5 * 1024 * 1024)

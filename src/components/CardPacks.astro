@@ -1,0 +1,20 @@
+---
+import { cardPacks, formatPrice } from "../lib/catalog";
+interface Props { selectable?: boolean; }
+const { selectable = false } = Astro.props;
+---
+<div class:list={["card-packs", { "card-packs-inputs": selectable }]}>
+  {cardPacks.map((pack) => selectable ? (
+    <label class="pack-option">
+      <input type="radio" name="quantity" value={pack.quantity} checked={pack.quantity === 1} required />
+      <strong>{pack.quantity} {pack.quantity === 1 ? "carte" : "cartes"}</strong>
+      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / carte</small>
+    </label>
+  ) : (
+    <a class:list={["pack-option", { "pack-highlight": pack.quantity === 5 }]} href={`/personnaliser?cartes=${pack.quantity}`}>
+      <span class="eyebrow">{pack.name}</span><strong>{pack.quantity} {pack.quantity === 1 ? "carte" : "cartes"}</strong>
+      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / carte</small>
+      <span class="pack-duration">{pack.quantity === 1 ? "Une jolie surprise" : `${pack.quantity} rendez-vous, un par semaine`}</span><span class="text-link">Choisir →</span>
+    </a>
+  ))}
+</div>

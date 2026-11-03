@@ -1,47 +1,59 @@
----
-interface Props {
-  light?: boolean;
-}
-const { light = false } = Astro.props;
----
-
 <a
-  class:list={["brand", { light }]}
   href="/"
-  aria-label="Les vacances de ma tétine — accueil"
+  class="brand"
+  aria-label="Les aventures de mon doudou et ma tétine — accueil"
 >
   <svg
-    width="44"
-    height="48"
-    viewBox="0 0 44 48"
+    class="brand-mark"
+    width="47"
+    height="49"
+    viewBox="0 0 48 50"
     fill="none"
     aria-hidden="true"
   >
     <path
-      d="M8 14c0-8 8-11 14-7 6-4 14-1 14 7 0 10-7 17-14 17S8 24 8 14Z"
-      fill="currentColor"
-      opacity=".14"
+      d="M10 23C2 4 11 0 17 20M21 20C20 0 30 2 27 23"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
     />
     <path
-      d="M13 18c-2-7 2-12 9-12s11 5 9 12M8 19c3-4 25-4 28 0-2 8-8 11-14 11S10 27 8 19Z"
+      d="M29 29c0 9-6 14-14 14S2 38 2 30s5-12 13-12 14 4 14 11Z"
+      fill="#e9d8ba"
       stroke="currentColor"
-      stroke-width="2"
+      stroke-width="1.5"
+    />
+    <path
+      d="M10 29h.1m10-.1h.1M14 33l2 0-1 2-1-2Z"
+      stroke="currentColor"
+      stroke-width="2.3"
+      stroke-linecap="round"
+    />
+    <path
+      d="M28 31c2-3 12-3 16 0 0 5-4 8-8 8s-8-3-8-8Z"
+      fill="#d4a29c"
+      stroke="currentColor"
+      stroke-width="1.5"
     />
     <ellipse
-      cx="22"
-      cy="32"
-      rx="7"
-      ry="8"
+      cx="36"
+      cy="40"
+      rx="4"
+      ry="5"
       stroke="currentColor"
-      stroke-width="2"
+      stroke-width="1.5"
     />
-    <path d="m36 4 1 4 4 1-4 1-1 4-1-4-4-1 4-1 1-4Z" fill="currentColor" />
+    <path
+      d="M35 11v6m-3-3h6"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
   </svg>
   <span>
-    Les vacances
-    <br />
+    <span class="brand-intro">Les aventures de</span>
     <strong>
-      de ma tétine<span class="brand-dot">.</span>
+      mon doudou <i>et</i> ma tétine
     </strong>
   </span>
 </a>

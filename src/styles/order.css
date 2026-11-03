@@ -259,22 +259,11 @@ legend {
   object-fit: contain;
   background: white;
 }
-.upload-compact {
-  min-height: 125px;
-}
 .field-error {
   display: block;
   font-size: 11px;
   color: #a04130;
   margin-top: 7px;
-}
-.remove-photo {
-  background: none;
-  border: 0;
-  font-size: 11px;
-  text-decoration: underline;
-  color: var(--coral);
-  padding: 7px 0;
 }
 .checkbox-field {
   display: flex;
@@ -331,8 +320,63 @@ legend {
 .summary-photo {
   position: relative;
 }
+.summary-bundle {
+  padding: 22px 18px 0;
+}
+.summary-bundle > .eyebrow {
+  font-size: 8px;
+}
+.summary-cards {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.summary-cards li {
+  min-width: 0;
+  padding: 5px 5px 10px;
+  background: var(--white);
+  box-shadow: 0 3px 10px #38463112;
+}
+.summary-cards img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+}
+.summary-card-number {
+  display: block;
+  margin: 8px 4px 4px;
+  color: var(--coral);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.summary-cards strong {
+  display: block;
+  margin: 0 4px;
+  font: 500 14px/1.25 var(--serif);
+}
+.summary-cards small {
+  display: block;
+  margin: 5px 4px 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+.summary-bundle-caption {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
+#summary-single[hidden],
+#summary-bundle[hidden] {
+  display: none;
+}
 .summary-photo img {
-  height: 220px;
+  height: auto;
+  aspect-ratio: 3 / 2;
   width: 100%;
 }
 .summary-photo > span {
@@ -497,15 +541,25 @@ legend {
   }
   .order-summary {
     position: static;
-    display: grid;
-    grid-template-columns: 120px 1fr;
+    display: block;
+  }
+  .summary-photo {
+    padding: 20px 20px 0;
   }
   .summary-photo img {
-    height: 100%;
-    object-position: 45% center;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-position: center;
+    border: 7px solid var(--white);
+    transform: rotate(-2deg);
   }
   .summary-photo > span {
-    display: none;
+    display: block;
+    position: static;
+    margin-top: 10px;
+    font-size: 8px;
+    max-width: 100%;
   }
   .summary-body {
     padding: 20px;
@@ -557,5 +611,93 @@ legend {
     right: 7px;
     width: 13px;
     height: 13px;
+  }
+}
+
+.companion-field {
+  margin: 25px 0;
+}
+.companion-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.companion-option {
+  position: relative;
+  border: 1px solid var(--line);
+  padding: 19px 15px;
+  border-radius: 7px;
+  cursor: pointer;
+  background: var(--paper);
+}
+.companion-option:has(input:checked) {
+  border: 2px solid var(--coral);
+  background: #f5e7da;
+  padding: 18px 14px;
+}
+.companion-option input {
+  accent-color: var(--coral);
+  margin: 0 6px 0 0;
+}
+.companion-option strong {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+}
+.companion-option span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 7px;
+}
+.companion-option:focus-within {
+  outline: 3px solid #977137;
+  outline-offset: 3px;
+}
+.upload-title {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.destination-option > span:not(.radio-mark) {
+  padding-right: 27px;
+}
+.summary-photo > span {
+  max-width: calc(100% - 30px);
+  font-size: 7px;
+}
+.summary-body h2 {
+  overflow-wrap: anywhere;
+}
+.form-panel h2:focus-visible {
+  outline: 2px solid #977137;
+  outline-offset: 5px;
+}
+@media (max-width: 640px) {
+  .field input,
+  .field textarea,
+  .field select {
+    font-size: 16px;
+  }
+  .companion-option {
+    padding: 17px 11px;
+  }
+  .companion-option:has(input:checked) {
+    padding: 16px 10px;
+  }
+  .companion-option strong {
+    font-size: 18px;
+  }
+  .order-heading h1 {
+    font-size: 37px;
+  }
+  .order-summary {
+    grid-template-columns: 95px 1fr;
+  }
+  .summary-body {
+    padding: 16px;
+  }
+  .order-page .back-link {
+    font-size: 10px;
   }
 }

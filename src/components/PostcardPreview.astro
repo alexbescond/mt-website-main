@@ -1,0 +1,16 @@
+---
+import Icon from "./Icon.astro";
+---
+<dialog id="postcard-preview" aria-labelledby="preview-title">
+  <div class="preview-top"><span class="eyebrow">UNE IMAGE DEVANT. UN PETIT MOT DERRIÈRE.</span><button id="close-preview" class="icon-button" aria-label="Fermer l’aperçu"><Icon name="close" /></button></div>
+  <h2 id="preview-title">Sa carte postale</h2>
+  <div class="postcard-preview-front" id="preview-front"><img id="preview-image" src="/images/tetine-transat.webp" alt="Recto illustré d’exemple" width="1200" height="800" /><p id="preview-front-title"></p></div>
+  <div class="postcard-preview-back" id="preview-back" hidden>
+    <div><span class="eyebrow">UN PETIT MOT POUR TOI</span><h3>Coucou Camille,</h3><p id="preview-text"></p><em>Ta Tétine ♡</em></div>
+    <div class="preview-address"><span class="postcard-stamp">✳</span><p>Pour Camille</p><p>À la maison</p><p>Tout près de ton cœur</p></div>
+  </div>
+  <div class="preview-controls"><button class="button button-secondary" id="preview-flip" type="button">Voir le verso</button><span id="preview-counter" aria-live="polite">Recto · 1 / 2</span></div>
+  <p class="quiet-note">Exemple fictif. L’illustration et le message sont adaptés à son compagnon et au prénom de votre enfant.</p>
+  <a id="preview-create" class="button" href="/personnaliser">Créer ses cartes <Icon name="arrow" size={17} /></a>
+</dialog>
+<script src="../scripts/postcards.ts"></script>
