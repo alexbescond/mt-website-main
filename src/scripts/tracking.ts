@@ -22,6 +22,10 @@ function render(order: TrackingOrder) {
   document.querySelector("#tracking-next-copy")!.textContent = !next ? "L’aventure continue dans votre boîte aux lettres." :
     late ? "Cette carte attend encore son départ. Son expédition sera confirmée ici." :
     next.planned_date ? (order.deliveryMode === "together" ? "Envoi groupé de toutes les cartes" : "Carte " + next.position) + " · Date d’expédition prévue." : "La date sera indiquée ici dès que le planning sera confirmé.";
+  if (order.deliveryStatus === "needs_review") {
+    document.querySelector("#tracking-next-date")!.textContent = "Vos coordonnées sont à vérifier";
+    document.querySelector("#tracking-next-copy")!.textContent = "Votre paiement est confirmé. La préparation est en attente de vérification de vos coordonnées de livraison. Ne repassez pas commande.";
+  }
   const list = document.querySelector("#tracking-cards")!;
   list.replaceChildren();
   order.cards.forEach(card => {
