@@ -21,11 +21,16 @@ export function checkoutAvailable(env: AppEnv, url: URL) {
   if (!local && url.origin !== env.SITE_ORIGIN) return false;
   if (!env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_")) return false;
   if (env.CHECKOUT_MODE === "test")
-    return !!env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
+    return /^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY || "");
   return (
     env.CHECKOUT_MODE === "live" &&
-    env.LEGAL_APPROVED === "true" &&
-    !!env.STRIPE_SECRET_KEY?.startsWith("sk_live_")
+    !local && url.protocol === "https:" &&
+    env.EMAIL_ENABLED === "true" &&
+    !!env.RESEND_API_KEY &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.EMAIL_FROM || "") &&
+    (env.ADMIN_PASSWORD?.length ?? 0) >= 24 &&
+    (env.TRACKING_LINK_SECRET?.length ?? 0) >= 32 &&
+    /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY || "")
   );
 }
 type StoredOrder = {
