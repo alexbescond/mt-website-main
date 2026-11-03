@@ -32,7 +32,7 @@ let appliedCoupon: (CouponPreview & { key: string }) | null = null;
 let couponRequest = 0;
 let couponBusy = false;
 function couponKey() {
-  return JSON.stringify([couponInput.value.trim().toUpperCase(), field("email").value.trim().toLowerCase(), chosenPack().quantity, chosenDelivery()]);
+  return JSON.stringify([couponInput.value.trim().toUpperCase(), field("couponEmail").value.trim().toLowerCase(), chosenPack().quantity, chosenDelivery()]);
 }
 function totalCents() { return appliedCoupon?.totalCents ?? chosenPack().totalCents; }
 function clearCoupon(message = "") {
@@ -173,7 +173,7 @@ function summary() {
   document.querySelector("#summary-coupon-discount")!.textContent = appliedCoupon ? `−${formatPrice(appliedCoupon.discountCents)}` : "";
   document.querySelector("#summary-total")!.textContent = formatPrice(totalCents());
   document.querySelector("#summary-cadence")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
-  if (step === 2) updatePaymentLabel();
+  if (step === 1) updatePaymentLabel();
 }
 function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
   const key = `${companion}:${chosenDelivery()}:${itinerary.join(",")}`;
@@ -222,9 +222,6 @@ function review() {
     `${companions[chosenCompanion()].label}${field("companionName").value.trim() ? ` · ${field("companionName").value.trim()}` : ""}`;
   document.querySelector("#review-notes")!.textContent = field("notes").value;
   document.querySelector("#review-delivery")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
-  document.querySelector("#review-address")!.textContent =
-    `${field("firstName").value} ${field("lastName").value}\n${field("address").value}\n${field("addressExtra").value ? field("addressExtra").value + "\n" : ""}${field("postalCode").value} ${field("city").value}\nFrance métropolitaine`;
-  document.querySelector("#review-email")!.textContent = field("email").value;
   const photos = document.querySelector("#review-photos")!;
   photos.replaceChildren();
   if (photoUrl) {
@@ -237,8 +234,8 @@ function review() {
 function updatePaymentLabel() {
   const price = formatPrice(totalCents());
   const free = totalCents() === 0;
-  next.textContent = mode === "demo" ? "Terminer la démonstration →" : free ? "Confirmer ma commande gratuite →" : mode === "test" ? `Tester le paiement Stripe · ${price} →` : `Payer ${price} avec Stripe →`;
-  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration ne déclenche aucun paiement ni envoi postal." : free ? "Votre commande est offerte. Confirmez-la sur Stripe, sans carte bancaire ni débit." : `Paiement unique de ${price}. Aucun abonnement. ${deliveryLabel(chosenPack().quantity, chosenDelivery())}.`;
+  next.textContent = mode === "demo" ? "Terminer la démonstration →" : free ? "Confirmer ma commande gratuite →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : free ? "Votre commande est offerte. Renseignez votre adresse de livraison et confirmez-la sur Stripe, sans carte bancaire ni débit." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Paiement unique de ${price}, frais de port inclus en France métropolitaine. Aucun abonnement.`;
 }
 function go(index: number) {
   step = index;
@@ -249,31 +246,30 @@ function go(index: number) {
   });
   previous.hidden = index === 0;
   error.hidden = true;
-  if (index === 2) updatePaymentLabel();
+  if (index === 1) updatePaymentLabel();
   else next.textContent = "Continuer →";
-  if (index === 2) review();
+  if (index === 1) review();
   panels[index]
     .querySelector<HTMLElement>("h2")!
     .focus({ preventScroll: true });
   panels[index].scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function validatePanel(index: number) {
+  panels[index].dataset.validated = "true";
   const controls = panels[index].querySelectorAll("input,textarea,select");
   for (const input of controls) {
+    if (input === field("couponEmail") && !couponInput.value.trim()) continue;
     if (
       (input instanceof HTMLInputElement ||
         input instanceof HTMLSelectElement ||
         input instanceof HTMLTextAreaElement) &&
-      !input.reportValidity()
-    )
+      !input.validity.valid
+    ) {
+      // Final review may uncover an invalid field in a hidden step.
+      if (panels[index].hidden) go(index);
+      input.reportValidity();
       return false;
-  }
-  if (index === 1 && /^(97|98)/.test(field("postalCode").value)) {
-    showError(
-      "La livraison est actuellement proposée en France métropolitaine uniquement.",
-    );
-    field("postalCode").focus();
-    return false;
+    }
   }
   return true;
 }
@@ -286,7 +282,7 @@ form.addEventListener("input", () => {
     clearCoupon("Votre commande a changé. Appliquez à nouveau votre code promo.");
   removeCoupon.hidden = !couponInput.value;
   summary();
-  if (step === 2) review();
+  if (step === 1) review();
   if (!busy) attemptId = newAttemptId();
 });
 async function validateCoupon() {
@@ -308,7 +304,7 @@ async function validateCoupon() {
     const response = await fetch("/api/coupon", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: couponInput.value, email: field("email").value, quantity: chosenPack().quantity, deliveryMode: chosenDelivery() }),
+      body: JSON.stringify({ code: couponInput.value, email: field("couponEmail").value, quantity: chosenPack().quantity, deliveryMode: chosenDelivery() }),
     });
     const result = await response.json() as CouponPreview & { error?: string };
     if (serial !== couponRequest || key !== couponKey()) return;
@@ -389,16 +385,11 @@ document
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (busy || couponBusy || !validatePanel(step)) return;
-  if (step < 2) {
+  if (step < 1) {
     go(step + 1);
     return;
   }
-  for (let i = 0; i < 2; i++) {
-    if (!validatePanel(i)) {
-      go(i);
-      return;
-    }
-  }
+  if (!validatePanel(0)) return;
   if (mode === "demo") {
     location.assign("/confirmation?demo=1");
     return;
@@ -429,6 +420,7 @@ form.addEventListener("submit", async (event) => {
   }
   try {
     const payload = new FormData(form);
+    if (!appliedCoupon) payload.delete("couponEmail");
     payload.set("attemptId", attemptId);
     if (appliedCoupon) payload.set("couponExpectedTotal", String(appliedCoupon.totalCents));
     lockedControls.forEach(control => { control.disabled = true; });
@@ -473,6 +465,7 @@ async function initialize() {
       available: boolean;
     };
     mode = data.mode;
+    document.querySelector<HTMLElement>("#coupon-box")!.hidden = mode === "demo" || !data.available;
     if (mode === "demo") {
       modeNotice.textContent =
         "Version de démonstration · Aucun paiement ni envoi de photos. Vous pouvez essayer toutes les étapes.";

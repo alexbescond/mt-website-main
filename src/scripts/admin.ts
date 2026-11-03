@@ -37,6 +37,8 @@ function renderOrder(order: AdminOrder) {
   const title = element("div");
   appendChildren(title, element("span", "eyebrow", "COMMANDE " + order.reference), element("h2", "", order.companionName || "Son compagnon"), element("p", "", order.parent + " · Pour " + order.child));
   appendChildren(header, title, element("span", "tracking-badge", progressCopy(order).text)); appendChildren(article, header);
+  const deliveryBlocked = order.deliveryStatus && order.deliveryStatus !== "ready";
+  if (deliveryBlocked) appendChildren(article, element("p", "notice", "Coordonnées de livraison à vérifier dans Stripe : adresse incomplète ou hors France métropolitaine. Préparation et expédition bloquées. Contacter le client avant de poursuivre ou de rembourser."));
   appendChildren(article, element("p", "summary-cadence", deliveryLabel(order.quantity, order.deliveryMode)));
   const details = element("details");
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
@@ -50,7 +52,7 @@ function renderOrder(order: AdminOrder) {
   appendChildren(customer, address, personal); appendChildren(details, customer); appendChildren(article, details);
   if (order.deliveryMode === "together") appendChildren(article, element("p", "admin-email-note", "Toutes les cartes doivent être prêtes avant l’envoi groupé. Revenir en arrière après l’expédition modifie le statut de toutes les cartes."));
   const first = order.cards[0];
-  if (first && first.state !== "sent") {
+  if (first && first.state !== "sent" && !deliveryBlocked) {
     const schedule = element("form", "admin-schedule");
     const label = element("label", "", "Premier envoi prévu");
     const input = element("input"); input.type = "date"; input.required = true; input.min = parisDate(); input.value = first.planned_date || "";
@@ -88,6 +90,7 @@ function renderOrder(order: AdminOrder) {
       }
       appendChildren(select, option);
     });
+    select.disabled = !!deliveryBlocked;
     select.value = card.state;
     select.addEventListener("change", async () => {
       const next = select.value as TrackingCard["state"];

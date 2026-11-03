@@ -74,6 +74,14 @@ Cette route, déclarée dans `env.production`, appartient à `mt-main-production
 
 ## Stripe en test
 
+Le parcours collecte la personnalisation sur le site (et un e-mail d’éligibilité uniquement si un code promo est appliqué), puis ouvre Stripe Checkout pour le nom du destinataire, l’e-mail, l’adresse et le paiement. `shipping_address_collection.allowed_countries` est limité à `FR` ; Stripe fournit l’aide à la saisie sans clé Google à gérer sur le site. La démonstration s’arrête au récapitulatif sans collecter de coordonnées ni ouvrir Stripe.
+
+Appliquer la migration **`0006_stripe_delivery.sql`** avant de déployer cette version. Elle ajoute le nom complet du destinataire et l’état de livraison sans modifier les adresses historiques. Le webhook signé enregistre `collected_information.shipping_details` et `customer_details.email` dans le même lot atomique que le paiement. L’adresse de facturation n’est jamais utilisée à la place de l’adresse de livraison ; les événements répétés ne remplacent pas les coordonnées déjà enregistrées.
+
+Checkout hébergé limite les pays mais ne permet pas notre filtre personnalisé sur les codes postaux avant paiement. Le texte Stripe rappelle la livraison en France métropolitaine. Une adresse incomplète, hors zone (`97`/`98`, autre pays) ou sans e-mail exploitable conserve le paiement enregistré avec `delivery_status=needs_review`. Elle reste visible dans l’atelier, avec préparation et planning bloqués ; le client voit aussi la vérification en attente. La confirmation automatique de préparation n’est pas envoyée. L’équipe doit vérifier dans Stripe, contacter le client et traiter une correction ou un remboursement manuellement. Ne positionner `delivery_status=ready` qu’après correction vérifiée des coordonnées en base ; le simple rejeu d’un webhook ne lève pas ce blocage. Aucun remboursement automatique n’est effectué.
+
+Pour valider en sandbox après déploiement : parcourir les deux étapes du site, saisir une adresse française dans Stripe, terminer avec une carte de test, puis vérifier le nom complet, l’e-mail et l’adresse dans l’atelier. Les tests automatiques simulent Stripe et couvrent la signature, le stockage, les reprises, les anciennes commandes et les adresses à vérifier. [Documentation de collecte Stripe](https://docs.stripe.com/payments/collect-addresses?ui=full-page).
+
 1. Utiliser le sandbox **mt-main-staging** (`acct_1UXgG5LOJ3UTEBt1`), rattaché au compte distinct **mt-main-production** (`acct_1UXgF6L9j58VN417`). Ne pas utiliser le compte Photo Print d’un autre projet. L’activation des paiements réels du nouveau compte reste à faire avant une ouverture publique.
 2. Ajouter les secrets du Worker avec les invites sécurisées (jamais dans Git ou dans le chat) :
 
@@ -92,7 +100,9 @@ En local : copier `.dev.vars.example` vers `.dev.vars`, y renseigner les secrets
 
 La redirection de succès ne marque jamais une commande comme payée. Le webhook signé est seul responsable de cette transition. Seuls les paiements par carte sont proposés. Les traitements de remboursements/litiges se font dans Stripe et doivent être intégrés à l’exploitation avant l’ouverture.
 
-Les codes sont désormais gérés côté serveur dans D1. Appliquer `0006_coupons.sql` avant cette version du Worker : elle conserve les anciens montants dans `subtotal_cents`, ajoute le montant net `amount_cents` (0 autorisé) et initialise les deux offres. Elle ne reconstruit pas `orders`, ce qui conserve les cartes, sessions de suivi et notifications liées. Cette migration exige le nouveau Worker pour créer des commandes ; prévoir une courte interruption des commandes entre migration et déploiement, et ne pas revenir à un ancien Worker sans adapter son insertion au nouveau schéma.
+Les codes sont désormais gérés côté serveur dans D1. Appliquer `0007_coupons.sql` après `0006_stripe_delivery.sql` et avant cette version du Worker : elle conserve les anciens montants dans `subtotal_cents`, ajoute le montant net `amount_cents` (0 autorisé) et initialise les deux offres. Elle ne reconstruit pas `orders`, ce qui conserve les cartes, sessions de suivi et notifications liées. Cette migration exige le nouveau Worker pour créer des commandes ; prévoir une courte interruption des commandes entre migration et déploiement, et ne pas revenir à un ancien Worker sans adapter son insertion au nouveau schéma.
+
+Un code préremplit l’e-mail Stripe depuis `coupon_email` ; un e-mail différent reçu dans le webhook place la commande en `needs_review`, sans confirmation de préparation automatique.
 
 Vérifier en sandbox `WELCOME10`, le rejet de l’offre privée avec un autre e-mail et sa confirmation à 0 € avec l’adresse autorisée. Les mêmes événements webhook suffisent : une commande gratuite utilise `checkout.session.completed` avec `payment_status=no_payment_required`, sans PaymentIntent ni carte bancaire. Le montant de la commande reste contrôlé. Aucune création de coupon dans le Dashboard Stripe n’est nécessaire. Les commandes offertes confirmées apparaissent aussi dans l’atelier ; `paid` signifie qu’elles sont autorisées à être préparées.
 

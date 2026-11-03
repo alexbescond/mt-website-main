@@ -27,13 +27,13 @@ export async function couponEligibility(code: string, email: string, mode: strin
       AND (c.starts_at IS NULL OR c.starts_at<=?)
       AND (c.expires_at IS NULL OR c.expires_at>?)
       AND (c.first_order_only=0 OR NOT EXISTS (
-        SELECT 1 FROM orders o WHERE lower(trim(o.email))=? AND o.payment_mode=? AND o.id!=?
+        SELECT 1 FROM orders o WHERE (lower(trim(o.email))=? OR o.coupon_email=?) AND o.payment_mode=? AND o.id!=?
         AND (o.status='paid' OR (o.status='pending' AND o.coupon_first_order=1))))
       AND (c.max_redemptions IS NULL OR c.max_redemptions>(
         SELECT count(*) FROM orders o WHERE o.coupon_id=c.id AND o.payment_mode=?
         AND o.status IN ('pending','paid') AND o.id!=?))`,
     values: [await sha256(code), await sha256(email.trim().toLowerCase()), now, now,
-      email.trim().toLowerCase(), mode, attemptId, mode, attemptId],
+      email.trim().toLowerCase(), email.trim().toLowerCase(), mode, attemptId, mode, attemptId],
   };
 }
 export async function couponPrice(env: AppEnv, code: string, email: string, quantity: number, delivery: DeliveryMode, attemptId = "") {

@@ -4,6 +4,7 @@ ALTER TABLE orders RENAME COLUMN amount_cents TO subtotal_cents;
 ALTER TABLE orders ADD COLUMN amount_cents INTEGER NOT NULL DEFAULT 0 CHECK(amount_cents >= 0);
 UPDATE orders SET amount_cents = subtotal_cents;
 ALTER TABLE orders ADD COLUMN coupon_id TEXT;
+ALTER TABLE orders ADD COLUMN coupon_email TEXT;
 ALTER TABLE orders ADD COLUMN coupon_label TEXT;
 ALTER TABLE orders ADD COLUMN coupon_percent_off INTEGER NOT NULL DEFAULT 0 CHECK(coupon_percent_off BETWEEN 0 AND 100);
 ALTER TABLE orders ADD COLUMN coupon_discount_cents INTEGER NOT NULL DEFAULT 0 CHECK(coupon_discount_cents >= 0);
@@ -31,5 +32,6 @@ INSERT INTO coupons(id,code_hash,label,percent_off,allowed_email_hash) VALUES
 
 CREATE INDEX orders_coupon_usage ON orders(coupon_id,payment_mode,status);
 CREATE INDEX orders_customer_history ON orders(lower(trim(email)),payment_mode,status);
-CREATE UNIQUE INDEX orders_first_order_offer ON orders(lower(trim(email)),payment_mode)
+CREATE INDEX orders_coupon_email ON orders(coupon_email,payment_mode,status);
+CREATE UNIQUE INDEX orders_first_order_offer ON orders(coupon_email,payment_mode)
   WHERE coupon_first_order=1 AND status IN ('pending','paid');
