@@ -85,7 +85,7 @@ export async function listAdminOrders(request: Request, env: AppEnv) {
       address: [row.first_name + " " + row.last_name, row.address, row.address_extra, row.postal_code + " " + row.city, "France"].filter(Boolean).join("\n"),
       notes: row.notes, hasPhoto: !!row.pacifier_key, notifications });
   }
-  return Response.json({ orders, hasMore: results.length > 20, emailEnabled: env.EMAIL_ENABLED === "true" && !!env.EMAIL && !!env.EMAIL_FROM && !!env.TRACKING_LINK_SECRET });
+  return Response.json({ orders, hasMore: results.length > 20, emailEnabled: env.CHECKOUT_MODE === "live" && env.EMAIL_ENABLED === "true" && !!env.RESEND_API_KEY && !!env.EMAIL_FROM && !!env.TRACKING_LINK_SECRET });
 }
 export async function updateCard(request: Request, env: AppEnv, orderId: string, position: number) {
   await requireAdmin(request, env);

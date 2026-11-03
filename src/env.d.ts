@@ -5,6 +5,7 @@ interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   ADMIN_PASSWORD?: string;
   TRACKING_LINK_SECRET?: string;
+  RESEND_API_KEY?: string;
 }
 // The demo runs before photo storage is provisioned. Works with or without a generated PHOTOS binding.
-type AppEnv = Omit<Env, "PHOTOS" | "EMAIL"> & { PHOTOS?: R2Bucket; EMAIL?: SendEmail };
+type AppEnv = Omit<Env, "PHOTOS"> & { PHOTOS?: R2Bucket };

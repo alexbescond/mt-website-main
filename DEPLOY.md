@@ -74,6 +74,8 @@ La redirection de succès ne marque jamais une commande comme payée. Le webhook
 
 Finaliser le vendeur, les conditions, le format/nombre de pages, les délais, les taxes, les modalités de réclamation, le contact confidentialité et l’organisation de la fabrication. Puis configurer un webhook de production avec les secrets de production, `CHECKOUT_MODE=live` et `LEGAL_APPROVED=true`. Ne passer `SITE_INDEXABLE=true` qu’à l’ouverture publique.
 
+Configurer aussi les notifications Resend : domaine expéditeur vérifié, secret Worker `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` et `EMAIL_ENABLED=true`. Voir [le guide des notifications](docs/TRACKING.md#activer-les-e-mails-resend). Le contrôle de déploiement live exige la clé Resend.
+
 Le contrôle de déploiement vérifie la présence des noms de secrets, pas leur validité ni le contenu juridique. La conformité, la fabrication et la livraison demandent une validation humaine.
 
 ## GitHub Actions et Workers Builds
@@ -85,7 +87,7 @@ Configurer dans l’environnement GitHub `production` :
 - `CLOUDFLARE_API_TOKEN` : token limité au compte et aux ressources nécessaires (Workers, D1, KV, R2 ; routes/zone si domaine personnalisé).
 - `CLOUDFLARE_ACCOUNT_ID` : identifiant du compte cible.
 
-Les clés Stripe restent dans les secrets du Worker. Activer le déploiement GitHub seulement après le provisionnement initial. Aucune modification des secrets, paramètres de branche ou connexions GitHub n’est faite par le code du dépôt.
+Les clés Stripe et Resend restent dans les secrets du Worker. Activer le déploiement GitHub seulement après le provisionnement initial. Aucune modification des secrets, paramètres de branche ou connexions GitHub n’est faite par le code du dépôt.
 
 Alternative homogène avec le site de médiation : Workers Builds sur `main`, Node 24, installation `npm ci` + Chromium, déploiement `npm run deploy:www`, autres branches `npm run preview:www`. Choisir **un seul** mécanisme de déploiement automatique pour éviter les publications en double.
 

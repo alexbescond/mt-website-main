@@ -42,24 +42,28 @@ L’atelier /admin utilise une session de douze heures, dont seule l’empreinte
 
 L’atelier contient les filtres de préparation, d’expédition du jour, de commandes terminées, une recherche et une pagination. Une commande donne accès aux coordonnées, à la personnalisation, à la photo et au planning. « Marquer comme expédiée » ouvre une confirmation avec la date réelle du dépôt.
 
-## Activer les e-mails Cloudflare
+## Activer les e-mails Resend
+
+Adresse expéditrice retenue : `no-reply@les-vacances-de-ma-tetine.com` (variable `EMAIL_FROM`). Le domaine `les-vacances-de-ma-tetine.com` doit être actif et vérifié dans Resend avant l’activation des envois.
 
 Les notifications sont transactionnelles : confirmation de commande, expédition d’une carte, renouvellement du lien. Aucun e-mail marketing, aucune photo ou donnée d’enfant dans les e-mails.
 
-1. Utiliser le compte Cloudflare du projet et le profil matetine. Vérifier les domaines avec npx wrangler email sending list --profile matetine.
-2. Disposer de Workers Paid et onboarder le domaine expéditeur à Email Sending. Vérifier SPF, DKIM et DMARC et l’adresse de réponse. Le domaine doit être réellement détenu et validé avant tout envoi.
-3. Ajouter un binding send_email nommé EMAIL dans wrangler.jsonc, restreint à l’adresse expéditrice avec allowed_sender_addresses. Le modèle commenté est à remplacer par le domaine validé.
-4. Renseigner EMAIL_FROM et EMAIL_REPLY_TO, puis EMAIL_ENABLED=true. TRACKING_LINK_SECRET doit être configuré.
-5. Appliquer les migrations et déployer après les contrôles habituels. Les contrôles de déploiement live exigent le binding, l’expéditeur et les noms des secrets de suivi.
-6. Vérifier une confirmation et une expédition avec une adresse réellement contrôlée. Les tests automatisés utilisent une doublure du service et n’envoient rien.
+1. Ajouter et vérifier le domaine expéditeur dans Resend. Installer les enregistrements DNS indiqués par Resend (SPF et DKIM), puis configurer DMARC. Choisir une adresse de réponse réellement consultée. Désactiver le suivi des ouvertures et des clics pour ces e-mails contenant un lien d’accès privé.
+2. Créer une clé API Resend avec la permission d’envoi, limitée au domaine du site. La conserver dans un gestionnaire de mots de passe, jamais dans Git ni dans le chat. L’installer dans le Worker avec l’invite sécurisée :
 
-L’envoi vers des clients réels est conditionné à CHECKOUT_MODE=live et EMAIL_ENABLED=true. En demo et test, aucun envoi même si le binding existe. Ne pas ajouter remote:true au binding de développement : cela enverrait des e-mails réels depuis le poste.
+       npx wrangler secret put RESEND_API_KEY --name mt-website-main --profile matetine
 
-Les requêtes de préparation et le webhook ne dépendent pas de la disponibilité du service d’e-mail : une notification est enregistrée dans D1 dans la même transaction que l’événement métier. Le cron toutes les cinq minutes en traite jusqu’à vingt par passage. Une réservation atomique évite les envois concurrents, avec cinq tentatives maximum et délai progressif. Les erreurs permanentes restent en échec et sont visibles dans l’atelier. Après correction, « Réessayer les notifications en échec » les remet en attente.
+3. Renseigner EMAIL_FROM avec une adresse du domaine vérifié et EMAIL_REPLY_TO avec l’adresse de réponse, puis EMAIL_ENABLED=true dans wrangler.jsonc. TRACKING_LINK_SECRET doit être configuré. Aucun binding Cloudflare send_email n’est nécessaire.
+4. Appliquer les migrations et déployer après les contrôles habituels. Les contrôles de déploiement live exigent l’expéditeur, RESEND_API_KEY et les noms des secrets de suivi. Ils ne prouvent pas que la clé API est valide ni que le domaine est vérifié.
+5. Vérifier une confirmation et une expédition avec une adresse réellement contrôlée. Les tests automatisés simulent l’API Resend et n’envoient rien.
 
-Le statut envoyé de la notification signifie « accepté par le service », pas reçu ou lu. La suppression des destinataires en échec et les événements de remise sont gérés par Email Sending ; les métriques de remise sont à consulter chez Cloudflare.
+L’envoi vers des clients réels est conditionné à CHECKOUT_MODE=live et EMAIL_ENABLED=true. En demo et test, aucun envoi même si une clé Resend est présente. Garder ces modes pour le développement local : l’appel HTTPS à Resend est réel en mode live.
 
-Le binding ne fournit pas de clé d’idempotence de fournisseur. Un arrêt du Worker entre l’acceptation du message et son enregistrement en base peut donc entraîner un doublon lors d’une reprise. Les répétitions ordinaires du webhook et les doubles clics, eux, sont dédupliqués.
+Les requêtes de préparation et le webhook ne dépendent pas de la disponibilité de Resend : une notification est enregistrée dans D1 dans la même transaction que l’événement métier. Le cron toutes les cinq minutes en traite jusqu’à vingt par passage. Une réservation atomique évite les envois concurrents, avec cinq tentatives maximum et délai progressif. Les erreurs réseau, 429, 5xx et conflits temporaires sont réessayés ; Retry-After est respecté. Chaque appel expire après dix secondes. Les erreurs permanentes restent en échec et sont visibles dans l’atelier. Après correction, « Réessayer les notifications en échec » les remet en attente.
+
+Chaque notification utilise une clé d’idempotence Resend stable. Le lien signé est calculé à partir de la création de la notification pour conserver le même contenu lors des nouvelles tentatives ; il expire trente jours après cette création. Resend déduplique les requêtes identiques pendant vingt-quatre heures. Une reprise après cette fenêtre peut encore créer un doublon si l’envoi avait été accepté sans être enregistré en base. Éviter de modifier le contenu, l’expéditeur ou le secret de signature pendant des tentatives en cours : Resend refuse une requête différente portant la même clé dans cette fenêtre.
+
+Le statut envoyé signifie « accepté par Resend », pas reçu ou lu. Consulter le tableau de bord Resend pour les remises, rejets et plaintes ; ces événements ne sont pas synchronisés dans l’atelier. Les reçus Stripe sont indépendants.
 
 ## Exploitation
 
@@ -71,6 +75,6 @@ Une annulation, un remboursement, un changement d’adresse après paiement ou u
 
 Documentation officielle :
 
-- [Email Sending](https://developers.cloudflare.com/email-service/get-started/send-emails/)
-- [API Workers](https://developers.cloudflare.com/email-service/api/send-emails/workers-api/)
-- [Restrictions du binding](https://developers.cloudflare.com/email-service/configuration/send-bindings/)
+- [Envoi d’un e-mail avec Resend](https://resend.com/docs/api-reference/emails/send-email)
+- [Clés d’idempotence](https://resend.com/docs/dashboard/emails/idempotency-keys)
+- [Erreurs de l’API](https://resend.com/docs/api-reference/errors)

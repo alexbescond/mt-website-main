@@ -52,7 +52,7 @@ npm run check
 npm audit --audit-level=high
 ```
 
-Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe simulé. Playwright construit le Worker et utilise des ressources isolées et un fichier de secrets vide. Aucune API Stripe réelle ni ressource de production n’est appelée par les tests.
+Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe et Resend simulés. Playwright construit le Worker et utilise des ressources isolées et un fichier de secrets vide. Aucune API Stripe ou Resend réelle ni ressource de production n’est appelée par les tests.
 
 ## Organisation
 
@@ -72,7 +72,7 @@ Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe simulé. 
 
 Le site démarre volontairement en démonstration sur le compte Cloudflare personnel : D1 et KV sont provisionnés. Il reste à activer R2 pour les photos, connecter un compte Stripe, acheter et relier le domaine, puis fixer les caractéristiques des cartes, les délais, le vendeur et les conditions de vente. Les textes de `/informations` sont des informations de préparation et doivent être finalisés.
 
-La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Le suivi client et l’atelier de préparation sont implémentés, avec une file de confirmations et de notifications d’expédition. Les e-mails restent désactivés tant que Cloudflare Email Sending et le domaine expéditeur ne sont pas configurés. Les reçus Stripe sont indépendants.
+La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Le suivi client et l’atelier de préparation sont implémentés, avec une file de confirmations et de notifications d’expédition. Les e-mails restent désactivés tant que Resend (clé API) et le domaine expéditeur ne sont pas configurés. Les reçus Stripe sont indépendants.
 
 Voir [DEPLOY.md](DEPLOY.md) pour le déploiement, Stripe et le traitement d’une commande. Les images fournies et le visuel de ski sont décrits dans [docs/ASSETS.md](docs/ASSETS.md).
 

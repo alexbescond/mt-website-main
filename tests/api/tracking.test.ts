@@ -143,36 +143,99 @@ it("returns identical recovery messages, deduplicates requests, and enforces rat
   const blocked = { ...bindings, CHECKOUT_LIMITER: { limit: async () => ({ success: false }) } };
   expect((await call("/api/tracking/email", body, undefined, blocked)).status).toBe(429);
 });
-it("sends nothing in demo/test/disabled mode, retries transient errors and avoids concurrent duplicate sends", async () => {
+it("shows the operator whether Resend sending is configured without exposing the key", async () => {
+  const live = { ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture_not_a_real_key" };
+  const cookie = await admin(live);
+  for (const [custom, expected] of [[live, true], [{ ...live, RESEND_API_KEY: "" }, false], [{ ...live, CHECKOUT_MODE: "test" }, false]] as const) {
+    const response = await call("/api/admin/orders", undefined, cookie, custom);
+    const body = await response.json();
+    expect(body).toMatchObject({ emailEnabled: expected });
+    expect(JSON.stringify(body)).not.toContain("re_fixture");
+  }
+});
+it("sends through Resend only in live mode and reuses an identical request after a rate limit", async () => {
   const id = await paidOrder("live");
-  const send = vi.fn().mockResolvedValue({ messageId: "message-fixture" });
-  const email = { send };
-  const live = { ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", EMAIL: email };
-  await sendNotifications({ ...live, EMAIL_ENABLED: "false" });
-  await sendNotifications({ ...live, CHECKOUT_MODE: "demo" });
-  await sendNotifications({ ...live, CHECKOUT_MODE: "test" });
+  await paidOrder("test");
+  const send = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ id: "message-fixture" }));
+  const live = { ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture_not_a_real_key", EMAIL_REPLY_TO: "support@example.com" };
+  for (const custom of [
+    { ...live, EMAIL_ENABLED: "false" }, { ...live, CHECKOUT_MODE: "demo" }, { ...live, CHECKOUT_MODE: "test" },
+    { ...live, RESEND_API_KEY: "" }, { ...live, EMAIL_FROM: "" }, { ...live, TRACKING_LINK_SECRET: "" },
+  ]) await sendNotifications(custom);
   expect(send).not.toHaveBeenCalled();
-  send.mockRejectedValueOnce(Object.assign(new Error("temporary"), { code: "E_RATE_LIMIT_EXCEEDED" }));
+  const now = Date.now();
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  send.mockResolvedValueOnce(Response.json({ name: "rate_limit_exceeded", message: "temporary" }, { status: 429, headers: { "Retry-After": "900" } }));
   await sendNotifications(live);
-  expect((await env.DB.prepare("SELECT status FROM notification_outbox WHERE order_id=?").bind(id).first())?.status).toBe("pending");
-  await env.DB.prepare("UPDATE notification_outbox SET available_at=0").run();
+  expect(await env.DB.prepare("SELECT status,available_at,error_code FROM notification_outbox WHERE order_id=?").bind(id).first())
+    .toMatchObject({ status: "pending", available_at: now + 900000, error_code: "RESEND_RATE_LIMIT_EXCEEDED" });
+  await sendNotifications(live);
+  expect(send).toHaveBeenCalledTimes(1);
+  vi.mocked(Date.now).mockReturnValue(now + 900000);
   await Promise.all([sendNotifications(live), sendNotifications(live)]);
   expect(send).toHaveBeenCalledTimes(2);
-  expect(send.mock.calls[1][0]).toMatchObject({ to: "parent@example.com", subject: "Le voyage de son compagnon commence" });
-  expect(send.mock.calls[1][0].html).toContain("/suivi#acces=");
-  expect((await env.DB.prepare("SELECT status FROM notification_outbox").first())?.status).toBe("sent");
+  expect(send.mock.calls[1][0]).toBe("https://api.resend.com/emails");
+  const request = send.mock.calls[1][1]!;
+  expect(request.method).toBe("POST");
+  expect(request.headers).toMatchObject({ Authorization: "Bearer re_fixture_not_a_real_key", "Idempotency-Key": "notification/" + id + "/confirmation" });
+  expect(request.body).toBe(send.mock.calls[0][1]!.body);
+  const body = JSON.parse(request.body as string);
+  expect(body).toMatchObject({ from: "Les aventures de mon doudou et ma tétine <bonjour@example.com>", to: ["parent@example.com"],
+    subject: "Le voyage de son compagnon commence", reply_to: "support@example.com" });
+  expect(body.html).toContain("/suivi#acces=");
+  expect(body.text).toContain("/suivi#acces=");
+  expect(body.html).not.toContain("Camille");
+  expect(await env.DB.prepare("SELECT status,provider_id FROM notification_outbox WHERE order_id=?").bind(id).first())
+    .toMatchObject({ status: "sent", provider_id: "message-fixture" });
   await sendNotifications(live);
   expect(send).toHaveBeenCalledTimes(2);
 });
-it("marks permanent email failures and exhausted leases for operator attention", async () => {
+it.each([
+  [401, "invalid_api_key", "failed"], [403, "validation_error", "failed"], [422, "validation_error", "failed"],
+  [409, "invalid_idempotent_request", "failed"], [409, "concurrent_idempotent_requests", "pending"],
+  [500, "application_error", "pending"], [503, "service_unavailable", "pending"],
+])("handles Resend %i %s as %s without logging personal data", async (status, name, expected) => {
   await paidOrder("live");
-  const send = vi.fn().mockRejectedValue(Object.assign(new Error("suppressed"), { code: "E_RECIPIENT_SUPPRESSED" }));
-  await sendNotifications({ ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", EMAIL: { send } });
-  expect((await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first())).toMatchObject({ status: "failed", error_code: "E_RECIPIENT_SUPPRESSED" });
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ name, message: "private parent@example.com" }, { status }));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  await sendNotifications({ ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture_not_a_real_key" });
+  expect(await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first())
+    .toMatchObject({ status: expected, error_code: "RESEND_" + name.toUpperCase() });
+  expect(JSON.stringify(log.mock.calls)).not.toContain("parent@example.com");
+});
+it("retries network and malformed responses, then stops after the last expired lease", async () => {
+  await paidOrder("live");
+  const send = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new TypeError("network"))
+    .mockResolvedValueOnce(Response.json({}));
+  const live = { ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture_not_a_real_key" };
+  await sendNotifications(live);
+  expect(await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first()).toMatchObject({ status: "pending", error_code: "SEND_FAILED" });
+  await env.DB.prepare("UPDATE notification_outbox SET available_at=0").run();
+  await sendNotifications(live);
+  expect(await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first()).toMatchObject({ status: "pending", error_code: "RESEND_INVALID_RESPONSE" });
   await env.DB.prepare("UPDATE notification_outbox SET status='sending',attempts=5,available_at=0").run();
-  await sendNotifications({ ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", EMAIL: { send } });
-  expect((await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first())).toMatchObject({ status: "failed", error_code: "RETRY_EXHAUSTED" });
-  expect(send).toHaveBeenCalledTimes(1);
+  await sendNotifications(live);
+  expect(await env.DB.prepare("SELECT status,error_code FROM notification_outbox").first()).toMatchObject({ status: "failed", error_code: "RETRY_EXHAUSTED" });
+  expect(send).toHaveBeenCalledTimes(2);
+});
+it("uses different idempotency keys for confirmations, dispatches and recovery emails", async () => {
+  const id = await paidOrder("live");
+  const now = Date.now();
+  await env.DB.prepare("UPDATE order_cards SET state='sent',sent_date='2026-11-03' WHERE order_id=? AND position=1").bind(id).run();
+  for (const kind of ["shipped", "access"]) {
+    await env.DB.prepare("INSERT INTO notification_outbox(id,order_id,kind,card_position,available_at,created_at) VALUES (?,?,?,?,?,?)")
+      .bind(id + "/" + kind, id, kind, kind === "shipped" ? 1 : null, now, now).run();
+  }
+  const send = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ id: crypto.randomUUID() }));
+  await sendNotifications({ ...bindings, CHECKOUT_MODE: "live", EMAIL_ENABLED: "true", RESEND_API_KEY: "re_fixture_not_a_real_key" });
+  expect(send).toHaveBeenCalledTimes(3);
+  const keys = send.mock.calls.map(([, init]) => new Headers(init!.headers).get("Idempotency-Key"));
+  expect(new Set(keys).size).toBe(3);
+  const bodies = send.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
+  expect(bodies.map(body => body.subject)).toEqual(expect.arrayContaining([
+    "Le voyage de son compagnon commence", "Votre carte 1 a pris la route !", "Votre lien pour suivre les cartes",
+  ]));
+  for (const body of bodies) expect(body).not.toHaveProperty("reply_to");
   const message = notificationMessage("access", "<script>", "https://example.com/#x");
   expect(message.html).not.toContain("<script>");
   expect(message.html).toContain("&lt;script&gt;");
