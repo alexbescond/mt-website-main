@@ -5,7 +5,6 @@ import {
   stripeWebhook,
 } from "./payments";
 import { InputError } from "./validation";
-import { previewCoupon } from "./coupons";
 import { adminLogin, adminLogout, exchangeTrackingLink, trackingAfterCheckout } from "./tracking-auth";
 import { adminPhoto, customerTracking, listAdminOrders, requestTrackingEmail, retryNotifications, scheduleOrder, updateCard } from "./tracking";
 export async function api(request: Request, env: AppEnv): Promise<Response> {
@@ -52,8 +51,6 @@ export async function api(request: Request, env: AppEnv): Promise<Response> {
     }
     if (url.pathname === "/api/checkout" && request.method === "POST")
       return await createCheckout(request, env);
-    if (url.pathname === "/api/coupon" && request.method === "POST")
-      return await previewCoupon(request, env);
     if (url.pathname === "/api/stripe/webhook" && request.method === "POST")
       return await stripeWebhook(request, env);
     if (url.pathname === "/api/order-status" && request.method === "GET")
@@ -63,7 +60,6 @@ export async function api(request: Request, env: AppEnv): Promise<Response> {
         "/api/config",
         "/api/health",
         "/api/checkout",
-        "/api/coupon",
         "/api/stripe/webhook",
         "/api/order-status",
       ].includes(url.pathname)
