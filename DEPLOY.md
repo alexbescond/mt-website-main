@@ -32,10 +32,21 @@ Exécuter seulement la commande de l’environnement voulu. Chacune lance les co
 
 ## Circuit de release
 
-1. Travailler sur une branche et ouvrir une PR ; la CI exécute les types, tests Worker/navigateur et l’audit des dépendances.
-2. Déployer le commit candidat sur le staging avec `npm run deploy:staging`. Vérifier le formulaire, un paiement sandbox, le webhook et le suivi. Noter le SHA Git validé.
-3. Après revue et merge sur `main`, publier ce même code avec `npm run deploy:www`, ou le job GitHub `production` lorsqu’il sera activé. S’il y a des changements depuis la validation staging, les revalider avant publication.
-4. Vérifier `/api/health` avec Access, les pages, les logs et la livraison des événements Stripe. Conserver l’identifiant de version Worker et le SHA Git pour un retour arrière.
+1. Travailler sur une branche et ouvrir une PR vers `main` ; la CI exécute les types, tests Worker/navigateur et l’audit des dépendances. Une PR ne déploie rien et ne reçoit pas les secrets Cloudflare.
+2. Fusionner dans `main` : après une nouvelle exécution réussie des contrôles, GitHub Actions déploie le Worker **staging**. Vérifier le formulaire, un paiement sandbox, le webhook et le suivi sur l’URL staging. Le SHA Git est conservé dans le résumé du déploiement.
+3. Ouvrir une PR **`main` → `prod`** pour promouvoir la version validée. La CI refuse les PR vers `prod` provenant d’une autre branche ou d’un fork. Vérifier que le code proposé correspond bien à celui testé en staging.
+4. Fusionner cette PR avec **Create a merge commit**, en conservant `main` : après les tests, GitHub Actions déploie **production**. Ne pas utiliser squash/rebase pour ces promotions répétées entre deux branches permanentes. Aucun développement direct sur `prod` ; toute correction passe d’abord par `main` et le staging.
+5. Vérifier `/api/health` avec Access, les pages, les logs et la livraison des événements Stripe. Conserver l’identifiant de version Worker et le SHA Git pour un retour arrière.
+
+| Déclenchement | Environnement GitHub | Worker |
+| --- | --- | --- |
+| Push après merge dans `main` | `staging` | `mt-website-main` |
+| Push après merge dans `prod` | `production` | `mt-main-production` |
+| PR vers `main` ou `prod` | aucun déploiement | tests uniquement |
+
+Les branches `main` et `prod` sont protégées : PR obligatoire, contrôle `e2e` réussi, conversations résolues, pas de force-push ni de suppression, y compris pour les administrateurs. Aucune seconde approbation humaine n’est imposée à ce dépôt individuel : la fusion de la PR constitue la décision de release. La branche `prod` a été initialisée depuis `main` ; sa création n’a déclenché aucun déploiement. Le nouveau workflow prend effet après fusion de cette PR de configuration dans `main`, puis promotion vers `prod`.
+
+Pour relancer une release sans nouveau commit, utiliser **Actions → e2e → Run workflow** en sélectionnant `main` ou `prod`. Sur une autre branche, ce déclenchement lance seulement les tests. Les commandes locales restent disponibles pour un dépannage ; une release habituelle passe par Git.
 
 `wrangler.jsonc` est la source de configuration ; les secrets restent propres à chaque Worker. Ne jamais partager la base ou les photos de production avec une prévisualisation. Une URL de version seule ne crée pas un environnement isolé.
 
@@ -91,16 +102,18 @@ Le contrôle de déploiement vérifie la présence des noms de secrets, pas leur
 
 ## GitHub Actions et Workers Builds
 
-`.github/workflows/e2e.yml` lance les contrôles à chaque PR, à chaque push sur `main` et manuellement. Le job `deploy` est conditionné au succès de ces tests et à la variable GitHub `CLOUDFLARE_DEPLOY_ENABLED=true`. Cette variable est actuellement absente : les déploiements ont été effectués depuis le terminal. Aucun déploiement automatique staging n’est encore configuré.
+`.github/workflows/e2e.yml` lance les contrôles sur les PR vers `main`/`prod`, les push sur ces branches et les déclenchements manuels. Le job `deploy` attend leur réussite et sélectionne l’environnement d’après la branche, sans entrée utilisateur permettant de changer la cible. La variable historique `CLOUDFLARE_DEPLOY_ENABLED` n’est plus utilisée. Un secret manquant fait échouer explicitement le job avant toute migration.
 
-Configurer dans l’environnement GitHub `production` :
+Les environnements GitHub sont créés et limités à leur branche : `staging` autorise uniquement `main`, `production` uniquement `prod`. Chacun doit contenir :
 
-- `CLOUDFLARE_API_TOKEN` : token limité au compte et aux ressources nécessaires (Workers, D1, KV, R2 ; routes/zone si domaine personnalisé).
-- `CLOUDFLARE_ACCOUNT_ID` : identifiant du compte cible.
+- le **secret** `CLOUDFLARE_API_TOKEN`, propre à l’environnement et limité aux ressources nécessaires pour déployer le Worker et appliquer les migrations D1 ;
+- la **variable** `CLOUDFLARE_ACCOUNT_ID`, déjà configurée à `2956aa8b799d46de715a248f6ef2207d`.
 
-Les clés Stripe et Resend restent dans les secrets du Worker. Activer le déploiement GitHub seulement après le provisionnement initial. Aucune modification des secrets, paramètres de branche ou connexions GitHub n’est faite par le code du dépôt.
+Les clés Stripe, Resend et les mots de passe restent dans les secrets du Worker, sans copie dans GitHub. Ne pas utiliser un jeton OAuth de connexion Wrangler comme secret CI : créer un jeton API de déploiement dédié. Les jetons CI restent à installer avant le premier merge déclenchant une release automatique.
 
-Recommandation : conserver GitHub Actions comme mécanisme unique de release, avec un environnement `staging` pour le candidat et `production` pour le code validé. Un déclenchement manuel de staging sur la branche choisie évite les écrasements entre plusieurs PR ; sérialiser les déploiements par environnement. Ajouter une validation du responsable sur l’environnement GitHub production si souhaité. Ne pas activer en parallèle Workers Builds pour publier le même Worker. `npm run preview:www` charge une version du Worker staging sans lui envoyer le trafic principal ; ses bindings restent ceux du staging, ce n’est pas une base indépendante par PR.
+Les releases sont sérialisées par branche/environnement. Un nouveau push n’interrompt pas un déploiement ni une migration en cours ; seules les anciennes exécutions de tests de PR sont annulées. Chaque release reconstruit le bon environnement et contrôle le Worker, l’origine et les bindings avant les migrations et la publication.
+
+GitHub Actions est le mécanisme unique de release : ne pas activer en parallèle Workers Builds sur les mêmes Workers. `npm run preview:www` charge une version du Worker staging sans lui envoyer le trafic principal ; ses bindings restent ceux du staging, ce n’est pas une base indépendante par PR. Cloudflare Access, l’indexation et l’activation des paiements réels restent des réglages distincts du choix de branche.
 
 ## Préparer les commandes
 
