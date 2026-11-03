@@ -14,7 +14,10 @@
     "SITE_ORIGIN": "https://les-vacances-de-ma-tetine.com",
     "CHECKOUT_MODE": "demo",
     "SITE_INDEXABLE": "false",
-    "LEGAL_APPROVED": "false"
+    "LEGAL_APPROVED": "false",
+    "EMAIL_ENABLED": "false",
+    "EMAIL_FROM": "",
+    "EMAIL_REPLY_TO": ""
   },
   "d1_databases": [{
     "binding": "DB", "database_name": "mt-orders",
@@ -23,8 +26,10 @@
   }],
   // Enable R2 on this account, create the private EU bucket, then add this binding:
   // "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "mt-private-photos", "jurisdiction": "eu" }],
+  // After onboarding the sender domain to Email Sending (Workers Paid):
+  // "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["bonjour@your-domain.fr"] }],
   "kv_namespaces": [{ "binding": "SESSION", "id": "9f532fb7c2034ef29d5e63881533b225" }],
   "ratelimits": [{ "name": "CHECKOUT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
-  "triggers": { "crons": ["17 3 * * *"] },
+  "triggers": { "crons": ["17 3 * * *", "*/5 * * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true }
 }

@@ -19,6 +19,7 @@ config.vars = {
   CHECKOUT_MODE: "demo",
   SITE_INDEXABLE: "false",
   LEGAL_APPROVED: "false",
+  EMAIL_ENABLED: "false",
 };
 config.d1_databases[0].database_id = "00000000-0000-0000-0000-000000000000";
 config.d1_databases[0].migrations_dir = path.resolve("migrations");
@@ -26,6 +27,7 @@ config.r2_buckets = [{ binding: "PHOTOS", bucket_name: "mt-e2e-private-photos" }
 config.kv_namespaces[0].id = "00000000000000000000000000000000";
 config.triggers = { crons: [] };
 delete config.routes;
+delete config.send_email;
 const configPath = path.join(directory, "wrangler.json");
 writeFileSync(configPath, JSON.stringify(config));
 // This empty vars file prevents Wrangler from loading developer Stripe credentials.

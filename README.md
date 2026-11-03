@@ -38,6 +38,12 @@ Le mode `demo` fonctionne sans secret : toutes les étapes sont accessibles, les
 - Polices locales, images WebP, CSP, robots/noindex sur les aperçus, aucun traqueur.
 - GitHub Actions : types, tests dans le runtime Worker, parcours Playwright desktop/mobile, audit puis déploiement conditionnel de `main`.
 
+## Suivi des cartes
+
+Le parent retrouve ses cartes dans `/suivi`, grâce à un lien privé reçu par e-mail ou depuis sa confirmation de paiement. L’atelier `/admin` permet de planifier les départs et de faire avancer chaque carte : à venir, en préparation, prête à partir, expédiée.
+
+En mode démonstration, essayer `/suivi?demo=1` et `/admin?demo=1`. Les changements fictifs se partagent dans le même onglet ; aucun e-mail n’est envoyé. Voir [le guide du suivi](docs/TRACKING.md) pour les accès privés, les migrations et l’activation des notifications.
+
 ## Vérifier
 
 ```sh
@@ -66,7 +72,7 @@ Les tests Worker utilisent de vrais stockages D1/R2 locaux avec Stripe simulé. 
 
 Le site démarre volontairement en démonstration sur le compte Cloudflare personnel : D1 et KV sont provisionnés. Il reste à activer R2 pour les photos, connecter un compte Stripe, acheter et relier le domaine, puis fixer les caractéristiques des cartes, les délais, le vendeur et les conditions de vente. Les textes de `/informations` sont des informations de préparation et doivent être finalisés.
 
-La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Aucun e-mail automatique n’est envoyé par ce code ; les reçus peuvent être activés dans Stripe.
+La création des cartes, l’impression et l’expédition restent manuelles : aucun générateur d’illustrations, imprimeur ni prestataire postal n’a été connecté. Le site enregistre la cadence et les aventures, mais ne déclenche aucun envoi physique automatique. Le délai de préparation du premier envoi reste à définir. Les commandes payées sont disponibles dans D1 et leurs photos dans R2 pour cette préparation. Le suivi client et l’atelier de préparation sont implémentés, avec une file de confirmations et de notifications d’expédition. Les e-mails restent désactivés tant que Cloudflare Email Sending et le domaine expéditeur ne sont pas configurés. Les reçus Stripe sont indépendants.
 
 Voir [DEPLOY.md](DEPLOY.md) pour le déploiement, Stripe et le traitement d’une commande. Les images fournies et le visuel de ski sont décrits dans [docs/ASSETS.md](docs/ASSETS.md).
 

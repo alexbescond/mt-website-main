@@ -1,6 +1,7 @@
 import { handle } from "@astrojs/cloudflare/handler";
 import { api } from "./lib/api";
 import { cleanupOrders } from "./lib/payments";
+import { sendNotifications } from "./lib/notifications";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -10,7 +11,7 @@ export default {
     if (url.pathname === "/robots.txt")
       response = new Response(
         indexable
-          ? `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /personnaliser\nDisallow: /confirmation\nSitemap: ${env.SITE_ORIGIN}/sitemap.xml\n`
+          ? `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /personnaliser\nDisallow: /confirmation\nDisallow: /suivi\nDisallow: /admin\nSitemap: ${env.SITE_ORIGIN}/sitemap.xml\n`
           : "User-agent: *\nDisallow: /\n",
         { headers: { "Content-Type": "text/plain; charset=utf-8" } },
       );
@@ -34,7 +35,7 @@ export default {
       "Content-Security-Policy",
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self' https://checkout.stripe.com; base-uri 'self'; object-src 'none'",
     );
-    const privatePage = /^\/(api|personnaliser|confirmation)(\/|\.|$)/.test(
+    const privatePage = /^\/(api|personnaliser|confirmation|suivi|admin)(\/|\.|$)/.test(
       url.pathname,
     );
     if (!indexable || privatePage || response.status >= 400)
@@ -44,7 +45,14 @@ export default {
       response.headers.set("Strict-Transport-Security", "max-age=31536000");
     return response;
   },
-  async scheduled(_event, env) {
-    await cleanupOrders(env);
+  async scheduled(event, env) {
+    await sendNotifications(env);
+    if (event.cron === "17 3 * * *") {
+      await cleanupOrders(env);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM tracking_sessions WHERE expires_at<?").bind(Date.now()),
+        env.DB.prepare("DELETE FROM admin_sessions WHERE expires_at<?").bind(Date.now()),
+      ]);
+    }
   },
 } satisfies ExportedHandler<AppEnv>;

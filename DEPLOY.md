@@ -6,7 +6,9 @@ Les conventions suivent [ka-website-mediation](https://github.com/alexbescond/ka
 
 Compte utilisé : `alexandre.bescond@protonmail.com` (`2956aa8b799d46de715a248f6ef2207d`), profil Wrangler local `matetine`. D1 est créé avec la juridiction UE et KV est provisionné. R2 n'est pas encore activé sur ce compte : le binding `PHOTOS` reste commenté et la démonstration fonctionne sans collecte. Le code refuse les paiements si ce binding manque.
 
-Aperçu publié le 17 octobre 2026 : **https://mt-website-main.alexandre-bescond.workers.dev**. Migration `0001_orders.sql` appliquée. Mode `demo`, aucun secret Stripe installé.
+Aperçu mis à jour le 3 novembre 2026 : **https://mt-website-main.alexandre-bescond.workers.dev**. Migrations `0001` à `0004` appliquées. Mode `demo`, aucun secret Stripe installé, e-mails désactivés. Version Worker : `7819db62-4a18-45a8-a86e-5bd293205f5c`.
+
+Pour tester le suivi, ouvrir [l’atelier de démonstration](https://mt-website-main.alexandre-bescond.workers.dev/admin?demo=1), faire avancer une carte puis cliquer sur « Ouvrir le suivi client » dans le même onglet. La simulation reste dans le navigateur : elle ne crée aucune commande dans D1 et n’envoie aucun e-mail. [Le carnet client](https://mt-website-main.alexandre-bescond.workers.dev/suivi?demo=1) est aussi accessible directement. Cloudflare Access reste requis ; `/api/health` confirme `ok: true`, `mode: demo`, `checkout: false`.
 
 | Ressource | Nom / binding |
 | --- | --- |
@@ -95,7 +97,7 @@ Les achats apparaissent dans le tableau D1 `orders`. Filtrer **`status='paid' AN
 npx wrangler r2 object get mt-private-photos/orders/ID_COMMANDE/pacifier --remote --jurisdiction eu --file .context/photo-tetine
 ```
 
-Ne jamais publier ces photos, ni les ajouter à Git. Utiliser un espace d’exploitation privé pour la fabrication. Il n’y a pas encore d’interface d’administration, d’intégration imprimeur ni de suivi d’expédition. Tenir le planning réel et les dates d’envoi dans un registre privé : le site enregistre le programme mais n’expédie pas automatiquement les cartes.
+Ne jamais publier ces photos, ni les ajouter à Git. Utiliser un espace d’exploitation privé pour la fabrication. L’interface privée `/admin` permet maintenant de consulter les commandes, les photos, le planning et de confirmer chaque expédition. La page `/suivi` présente cet avancement au parent. La création des cartes et les dépôts postaux restent manuels, sans intégration imprimeur ni transporteur. Appliquer la migration `0004_tracking.sql` et suivre [la configuration des accès et notifications](docs/TRACKING.md) avant activation.
 
 Le cron quotidien à 03:17 UTC supprime les commandes non payées après 7 jours, et les photos des commandes payées après 90 jours. Il conserve les données de commande payée ; une politique comptable/administrative complète reste à définir. Le code limite chaque passage à 100 commandes ; surveiller les logs `retention_complete` et adapter le traitement avant une montée en charge.
 

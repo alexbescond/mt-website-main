@@ -41,11 +41,16 @@ if (config.vars.CHECKOUT_MODE !== "demo") {
   );
   assert(result.status === 0, "Cannot verify deployed secret names.");
   const secrets = JSON.parse(result.stdout);
-  for (const key of ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"])
+  for (const key of ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "ADMIN_PASSWORD", "TRACKING_LINK_SECRET"])
     assert(
       secrets.some((s) => s.name === key),
       `Missing Worker secret: ${key}`,
     );
+}
+if (config.vars.CHECKOUT_MODE === "live") {
+  assert(config.vars.EMAIL_ENABLED === "true", "Enable transactional notifications before opening sales.");
+  assert(config.send_email?.some(binding => binding.name === "EMAIL"), "Configure the EMAIL binding and onboard its sender domain.");
+  assert(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.vars.EMAIL_FROM || ""), "Set the verified EMAIL_FROM address.");
 }
 if (config.vars.CHECKOUT_MODE === "live")
   assert(
