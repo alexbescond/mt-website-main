@@ -202,23 +202,7 @@ import "../styles/order.css";
             <p>Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.</p>
             <p>Frais de port inclus en France métropolitaine. La même adresse sera utilisée pour toutes les cartes.</p>
           </div>
-          <details class="coupon-box" id="coupon-box" hidden>
-            <summary>Vous avez un code promo ?</summary>
-            <label class="field" for="coupon-code">
-              Code promo
-              <input id="coupon-code" name="couponCode" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="coupon-message" />
-            </label>
-            <label class="field" for="coupon-email">
-              E-mail pour le code promo
-              <input id="coupon-email" name="couponEmail" type="email" maxlength="254" autocomplete="email" aria-describedby="coupon-email-help" />
-              <small id="coupon-email-help">Pour vérifier votre éligibilité. Utilisez cette même adresse e-mail sur Stripe ; vos coordonnées de livraison seront demandées sur cette page sécurisée.</small>
-            </label>
-            <div class="coupon-actions">
-              <button type="button" class="button button-secondary" id="apply-coupon">Appliquer</button>
-              <button type="button" class="edit-button" id="remove-coupon" hidden>Retirer le code</button>
-            </div>
-            <p id="coupon-message" role="status" aria-live="polite"></p>
-          </details>
+          <p class="field-help" id="stripe-promo-note" hidden>Vous avez un code promo ? Vous pourrez l’ajouter sur Stripe à l’étape suivante. La réduction s’affichera avant de confirmer votre commande.</p>
           <label class="checkbox-field">
             <input type="checkbox" name="termsConsent" required />
             <span>
@@ -302,9 +286,7 @@ import "../styles/order.css";
             <span>Livraison</span>
             <span>Incluse</span>
           </div>
-          <div class="summary-line summary-discount" id="summary-coupon-row" hidden>
-            <span id="summary-coupon-label"></span><span id="summary-coupon-discount"></span>
-          </div>
+
           <div class="summary-total">
             <span>Total</span>
             <strong id="summary-total" aria-live="polite">7,00 €</strong>

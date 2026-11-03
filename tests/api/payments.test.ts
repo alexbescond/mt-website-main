@@ -9,10 +9,11 @@ import postcardSchema from "../../migrations/0003_postcards.sql?raw";
 import trackingSchema from "../../migrations/0004_tracking.sql?raw";
 import stripeDeliverySchema from "../../migrations/0006_stripe_delivery.sql?raw";
 import couponSchema from "../../migrations/0007_coupons.sql?raw";
-const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema + "\n" + couponSchema;
+import stripePromotionsSchema from "../../migrations/0008_stripe_promotions.sql?raw";
+const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema + "\n" + couponSchema + "\n" + stripePromotionsSchema;
 import { api } from "../../src/lib/api";
 import { checkoutAvailable, cleanupOrders, stripeClient } from "../../src/lib/payments";
-import { limitedBody, validatePhoto, sha256 } from "../../src/lib/validation";
+import { limitedBody, validatePhoto } from "../../src/lib/validation";
 
 const origin = "https://les-aventures-de-doudou-tetine.com";
 const bindings: AppEnv = {
@@ -92,9 +93,9 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
       expect(body.get("success_url")).toBe(`${origin}/confirmation`);
       expect(body.get("shipping_address_collection[allowed_countries][0]")).toBe("FR");
-      if (unitAmount === 0) expect(body.get("customer_email")).toBe("free@example.com");
-      else if ([630, 1282].includes(unitAmount)) expect(body.get("customer_email")).toMatch(/@example\.com$/);
-      else expect(body.has("customer_email")).toBe(false);
+      expect(body.has("customer_email")).toBe(false);
+      expect(body.get("allow_promotion_codes")).toBe("true");
+      expect(body.get("payment_method_collection")).toBe("if_required");
       return Response.json({
         id: sessionId,
         url: `https://checkout.stripe.com/c/pay/${sessionId}`,
@@ -107,6 +108,11 @@ async function webhook(
   opts: {
     type?: string;
     amount?: number;
+    subtotal?: number;
+    discount?: number;
+    tax?: number;
+    shippingAmount?: number;
+    currency?: string;
     paid?: string;
     live?: boolean;
     timestamp?: number;
@@ -126,7 +132,9 @@ async function webhook(
         metadata: { order_id: id },
         payment_status: opts.paid || "paid",
         amount_total: opts.amount ?? 700,
-        currency: "eur",
+        amount_subtotal: opts.subtotal ?? (opts.amount ?? 700) + (opts.discount ?? 0),
+        total_details: { amount_discount: opts.discount ?? 0, amount_tax: opts.tax ?? 0, amount_shipping: opts.shippingAmount ?? 0 },
+        currency: opts.currency ?? "eur",
         collected_information: {
           shipping_details: opts.shipping === undefined ? {
             name: "Alex Marie Exemple",
@@ -660,171 +668,6 @@ it("requires a new checkout attempt when the delivery mode changes", async () =>
   expect((await api(request(form), bindings)).status).toBe(409);
 });
 
-function preview(code = "WELCOME10", email = "parent@example.com", quantity = 1, deliveryMode = "weekly", custom = bindings) {
-  return api(new Request(`${origin}/api/coupon`, {
-    method: "POST", headers: { Origin: origin, "Content-Type": "application/json" },
-    body: JSON.stringify({ code, email, quantity, deliveryMode }),
-  }), custom);
-}
-async function privateOffer() {
-  // Exercise the seeded private offer using test-only credentials.
-  await env.DB.prepare("UPDATE coupons SET code_hash=?,allowed_email_hash=? WHERE id='personal-free'")
-    .bind(await sha256("PRIVATE-FREE-TEST"), await sha256("free@example.com")).run();
-}
-it("previews a normalized code without reserving it and rejects invalid/private inputs generically", async () => {
-  await privateOffer();
-  expect(await (await preview(" welcome10 ")).json()).toMatchObject({ code: "WELCOME10", percentOff: 10, discountCents: 70, totalCents: 630 });
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(0);
-  const missing = await preview("DOES-NOT-EXIST");
-  const restricted = await preview("PRIVATE-FREE-TEST");
-  expect(missing.status).toBe(400);
-  expect(restricted.status).toBe(400);
-  expect(await restricted.json()).toEqual(await missing.json());
-  expect((await preview("WELCOME10", "invalid")).status).toBe(400);
-  expect((await preview("WELCOME10", "parent@example.com", 6)).status).toBe(400);
-  expect((await preview("WELCOME10", "parent@example.com", 1, "invalid")).status).toBe(400);
-  expect((await preview("WELCOME10", "parent@example.com", 1, "weekly", { ...bindings, CHECKOUT_MODE: "demo" })).status).toBe(503);
-  expect((await preview("WELCOME10", "parent@example.com", 1, "weekly", { ...bindings, CHECKOUT_LIMITER: { limit: async () => ({ success: false }) } })).status).toBe(429);
-  expect((await api(new Request(`${origin}/api/coupon`, { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/json" }, body: "{}" }), bindings)).status).toBe(403);
-});
-it("stores the coupon price, ignores client amounts and confirms only the discounted payment", async () => {
-  const fetch = mockStripe("cs_discount", 630);
-  const form = payload(); form.set("couponEmail", "parent@example.com");
-  form.set("couponCode", " welcome10 ");
-  form.set("amountCents", "0");
-  form.set("couponDiscountCents", "700");
-  form.set("couponExpectedTotal", "630");
-  const id = String(form.get("attemptId"));
-  expect((await api(request(form), bindings)).status).toBe(200);
-  expect(await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(id).first()).toMatchObject({ subtotal_cents: 700, amount_cents: 630, coupon_id: "welcome10", coupon_percent_off: 10, coupon_discount_cents: 70, coupon_first_order: 1 });
-  expect((await api(request(form), bindings)).status).toBe(200);
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect((await webhook(id, "cs_discount", { amount: 700 })).status).toBe(409);
-  expect((await webhook(id, "cs_discount", { amount: 630 })).status).toBe(200);
-  expect((await preview()).status).toBe(400);
-  form.set("attemptId", crypto.randomUUID());
-  expect((await api(request(form), bindings)).status).toBe(400);
-});
-it("rounds the discount once on the subtotal after grouped delivery", async () => {
-  mockStripe("cs_rounding", 1282);
-  const form = payload(); form.set("couponEmail", "parent@example.com");
-  form.set("quantity", "3"); form.set("deliveryMode", "together");
-  form.append("adventure", "ski"); form.append("adventure", "espace");
-  form.set("couponCode", "WELCOME10");
-  expect(await (await preview("WELCOME10", "parent@example.com", 3, "together")).json()).toMatchObject({ discountCents: 143, totalCents: 1282 });
-  expect((await api(request(form), bindings)).status).toBe(200);
-  expect(await env.DB.prepare("SELECT subtotal_cents,amount_cents,coupon_discount_cents FROM orders").first()).toEqual({ subtotal_cents: 1425, amount_cents: 1282, coupon_discount_cents: 143 });
-});
-it("rejects a changed preview price before creating an order or contacting Stripe", async () => {
-  const fetch = mockStripe();
-  const form = payload(); form.set("couponEmail", "parent@example.com"); form.set("couponCode", "WELCOME10"); form.set("couponExpectedTotal", "0");
-  expect((await api(request(form), bindings)).status).toBe(409);
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(0);
-  expect(fetch).not.toHaveBeenCalled();
-});
-it("restricts the free offer to its email and fulfils zero-cost checkouts only on verified completion", async () => {
-  await privateOffer();
-  const fetch = mockStripe("cs_free", 0);
-  const form = payload(); form.set("couponEmail", "parent@example.com"); form.set("couponCode", "private-free-test");
-  const id = String(form.get("attemptId"));
-  expect((await api(request(form), bindings)).status).toBe(400);
-  expect(fetch).not.toHaveBeenCalled();
-  expect((await bindings.PHOTOS!.list()).objects).toHaveLength(0);
-  form.set("couponEmail", " Free@Example.com ");
-  expect(await (await preview("private-free-test", " Free@Example.com ")).json()).toMatchObject({ percentOff: 100, totalCents: 0 });
-  const response = await api(request(form), bindings);
-  expect(response.status).toBe(200);
-  expect(await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(id).first()).toMatchObject({ email: "", coupon_email: "free@example.com", status: "pending", amount_cents: 0, subtotal_cents: 700, coupon_discount_cents: 700 });
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(0);
-  expect((await webhook(id, "wrong", { paid: "no_payment_required", amount: 0, email: "free@example.com" })).status).toBe(409);
-  expect((await webhook(id, "cs_free", { paid: "no_payment_required", amount: 1 })).status).toBe(409);
-  expect((await webhook(id, "cs_free", { paid: "unpaid", amount: 0 })).status).toBe(200);
-  expect((await env.DB.prepare("SELECT status FROM orders WHERE id=?").bind(id).first())?.status).toBe("pending");
-  expect((await webhook(id, "cs_free", { paid: "no_payment_required", amount: 0, email: "free@example.com" })).status).toBe(200);
-  expect((await webhook(id, "cs_free", { paid: "no_payment_required", amount: 0, email: "free@example.com" })).status).toBe(200);
-  expect((await webhook(id, "cs_free", { type: "checkout.session.expired" })).status).toBe(200);
-  expect((await env.DB.prepare("SELECT status FROM orders WHERE id=?").bind(id).first())?.status).toBe("paid");
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(1);
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox").first())?.n).toBe(1);
-  const cookie = response.headers.get("set-cookie")!.split(";")[0];
-  expect(await (await api(new Request(`${origin}/api/order-status`, { headers: { cookie } }), bindings)).json()).toMatchObject({ status: "paid", free: true });
-  expect((await preview("PRIVATE-FREE-TEST", "free@example.com")).status).toBe(200);
-  expect((await preview("PRIVATE-FREE-TEST", "free+alias@example.com")).status).toBe(400);
-});
-it("does not treat no_payment_required as payment for a nonzero order", async () => {
-  mockStripe(); const form = payload(); form.set("couponEmail", "parent@example.com"); await api(request(form), bindings);
-  expect((await webhook(String(form.get("attemptId")), "cs_test_fixture", { paid: "no_payment_required", amount: 700 })).status).toBe(200);
-  expect((await env.DB.prepare("SELECT status FROM orders").first())?.status).toBe("pending");
-});
-it("holds free orders when Stripe returns a different email without losing the coupon identity", async () => {
-  await privateOffer();
-  mockStripe("cs_free", 0);
-  const form = payload(); form.set("couponCode", "PRIVATE-FREE-TEST"); form.set("couponEmail", "free@example.com");
-  const id = String(form.get("attemptId"));
-  expect((await api(request(form), bindings)).status).toBe(200);
-  expect((await webhook(id, "cs_free", { paid: "no_payment_required", amount: 0, email: "different@example.com" })).status).toBe(200);
-  expect(await env.DB.prepare("SELECT status,delivery_status,email,coupon_email FROM orders WHERE id=?").bind(id).first())
-    .toEqual({ status: "paid", delivery_status: "needs_review", email: "different@example.com", coupon_email: "free@example.com" });
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox").first())?.n).toBe(0);
-});
-it("keeps a first-order redemption tied to its original email after Stripe contact changes", async () => {
-  mockStripe("cs_email_change", 630);
-  const form = payload(); form.set("couponCode", "WELCOME10"); form.set("couponEmail", "parent@example.com");
-  expect((await api(request(form), bindings)).status).toBe(200);
-  form.set("couponEmail", "other@example.com");
-  expect((await api(request(form), bindings)).status).toBe(409);
-  expect((await webhook(String(form.get("attemptId")), "cs_email_change", { amount: 630, email: "other@example.com" })).status).toBe(200);
-  expect((await preview("WELCOME10", "parent@example.com")).status).toBe(400);
-  expect((await preview("WELCOME10", "other@example.com")).status).toBe(400);
-});
-it("reserves a first-order offer atomically across simultaneous attempts and releases it on expiry", async () => {
-  const fetch = mockStripe("cs_reserved", 630);
-  const forms = [payload(), payload()]; forms.forEach(f => { f.set("couponCode", "WELCOME10"); f.set("couponEmail", "parent@example.com"); });
-  const responses = await Promise.all(forms.map(f => api(request(f), bindings)));
-  expect(responses.filter(r => r.status === 200)).toHaveLength(1);
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(1);
-  const winner = String(forms[responses.findIndex(r => r.status === 200)].get("attemptId"));
-  expect((await preview()).status).toBe(400);
-  expect((await webhook(winner, "cs_reserved", { type: "checkout.session.expired" })).status).toBe(200);
-  expect((await preview()).status).toBe(200);
-  vi.restoreAllMocks(); mockStripe("cs_after_expiry", 630);
-  const next = payload(); next.set("couponEmail", "parent@example.com"); next.set("couponCode", "WELCOME10");
-  expect((await api(request(next), bindings)).status).toBe(200);
-});
-it("checks paid history including orders without coupons and normalizes customer email", async () => {
-  mockStripe(); const form = payload(); form.set("couponEmail", "parent@example.com"); await api(request(form), bindings);
-  await webhook(String(form.get("attemptId")));
-  await env.DB.prepare("UPDATE orders SET email=' Parent@Example.com '").run();
-  expect((await preview("WELCOME10", "PARENT@example.com")).status).toBe(400);
-});
-it("enforces enabled dates and global limits again at checkout, not just at preview", async () => {
-  const fetch = mockStripe("cs_limited", 630);
-  expect((await preview()).status).toBe(200);
-  const form = payload(); form.set("couponEmail", "parent@example.com"); form.set("couponCode", "WELCOME10");
-  await env.DB.prepare("UPDATE coupons SET enabled=0 WHERE id='welcome10'").run();
-  expect((await api(request(form), bindings)).status).toBe(400);
-  await env.DB.prepare("UPDATE coupons SET enabled=1,starts_at=? WHERE id='welcome10'").bind(Date.now() + 60000).run();
-  expect((await preview()).status).toBe(400);
-  await env.DB.prepare("UPDATE coupons SET starts_at=NULL,expires_at=1 WHERE id='welcome10'").run();
-  expect((await preview()).status).toBe(400);
-  await env.DB.prepare("UPDATE coupons SET expires_at=NULL,max_redemptions=1 WHERE id='welcome10'").run();
-  const other = payload(); other.set("couponEmail", "other@example.com"); other.set("couponCode", "WELCOME10");
-  const results = await Promise.all([api(request(form), bindings), api(request(other), bindings)]);
-  expect(results.filter(r => r.status === 200)).toHaveLength(1);
-  expect(fetch).toHaveBeenCalledTimes(1);
-});
-it("retains a coupon price and reservation across Stripe failures and coupon edits", async () => {
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ error: { message: "Unavailable", type: "invalid_request_error" } }, { status: 400 }));
-  const form = payload(); form.set("couponEmail", "parent@example.com"); form.set("couponCode", "WELCOME10");
-  expect((await api(request(form), bindings)).status).toBe(503);
-  expect((await preview()).status).toBe(400);
-  await env.DB.prepare("UPDATE coupons SET percent_off=5,enabled=0 WHERE id='welcome10'").run();
-  vi.restoreAllMocks(); mockStripe("cs_retry_coupon", 630);
-  expect((await api(request(form), bindings)).status).toBe(200);
-  form.delete("couponCode");
-  expect((await api(request(form), bindings)).status).toBe(409);
-});
 it("migrates historical prices without dropping cards, tracking sessions or notifications", async () => {
   await reset();
   const apply = async (sql: string) => env.DB.batch(sql.split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
@@ -834,7 +677,128 @@ it("migrates historical prices without dropping cards, tracking sessions or noti
   await env.DB.prepare("INSERT INTO tracking_sessions VALUES ('session','old',9999)").run();
   await env.DB.prepare("INSERT INTO notification_outbox(id,order_id,kind,created_at,available_at) VALUES ('notification','old','confirmation',1,1)").run();
   await apply(couponSchema);
+  await apply(stripePromotionsSchema);
   expect(await env.DB.prepare("SELECT amount_cents,subtotal_cents,coupon_discount_cents FROM orders WHERE id='old'").first()).toEqual({ amount_cents: 1650, subtotal_cents: 1650, coupon_discount_cents: 0 });
   for (const table of ["order_cards", "tracking_sessions", "notification_outbox"])
     expect((await env.DB.prepare(`SELECT count(*) AS n FROM ${table}`).first())?.n).toBe(1);
+});
+
+function mockPromotion(amount: number, code = "WELCOME10") {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+    expect(url.origin + url.pathname).toBe("https://api.stripe.com/v1/checkout/sessions/cs_test_fixture");
+    expect(url.searchParams.get("expand[0]")).toBe("discounts.promotion_code");
+    return Response.json({ id: "cs_test_fixture", amount_total: amount, discounts: [{
+      coupon: { id: "coupon_fixture" },
+      promotion_code: { id: "promo_fixture", code },
+    }] });
+  });
+}
+
+it("uses Stripe promotions without accepting client discount amounts or eligibility emails", async () => {
+  mockStripe();
+  const form = payload();
+  form.set("amountCents", "0");
+  form.set("couponDiscountCents", "700");
+  form.set("couponExpectedTotal", "0");
+  form.set("couponEmail", "free@example.com");
+  const response = await api(request(form), bindings);
+  expect(response.status).toBe(200);
+  expect(await env.DB.prepare("SELECT subtotal_cents,amount_cents,coupon_email,discount_source FROM orders").first())
+    .toEqual({ subtotal_cents: 700, amount_cents: 700, coupon_email: null, discount_source: "stripe" });
+  expect((await api(new Request(`${origin}/api/coupon`, { method: "POST" }), bindings)).status).toBe(404);
+});
+
+it("asks older forms to reload instead of silently dropping an applied discount", async () => {
+  const fetch = mockStripe();
+  const form = payload(); form.set("couponCode", "WELCOME10");
+  expect((await api(request(form), bindings)).status).toBe(409);
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(0);
+});
+
+it.each([[70, 630], [200, 500], [700, 0]])("records Stripe's %i-cent discount and confirms the %i-cent total once", async (discount, total) => {
+  mockStripe();
+  const form = payload(); const id = String(form.get("attemptId"));
+  const response = await api(request(form), bindings);
+  const fetch = mockPromotion(total, total === 0 ? "FREE-TEST" : "WELCOME10");
+  fetch.mockClear();
+  const opts = { amount: total, discount, paid: total === 0 ? "no_payment_required" : "paid" };
+  expect((await webhook(id, "cs_test_fixture", { ...opts, paid: "unpaid" })).status).toBe(200);
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT status FROM orders").first())?.status).toBe("pending");
+  expect((await webhook(id, "cs_test_fixture", opts)).status).toBe(200);
+  expect((await webhook(id, "cs_test_fixture", opts)).status).toBe(200);
+  expect((await webhook(id, "cs_test_fixture", { type: "checkout.session.expired" })).status).toBe(200);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(await env.DB.prepare("SELECT * FROM orders").first()).toMatchObject({
+    status: "paid", subtotal_cents: 700, amount_cents: total, coupon_discount_cents: discount,
+    stripe_promotion_code_id: "promo_fixture", stripe_coupon_id: "coupon_fixture",
+    stripe_promotion_code: total === 0 ? "FREE-TEST" : "WELCOME10", delivery_status: "ready",
+    email: "parent@example.com", coupon_email: null,
+  });
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(1);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox").first())?.n).toBe(1);
+  const cookie = response.headers.get("set-cookie")!.split(";")[0];
+  expect(await (await api(new Request(`${origin}/api/order-status`, { headers: { cookie } }), bindings)).json())
+    .toMatchObject({ status: "paid", free: total === 0 });
+});
+
+it("keeps Stripe's rounding after the grouped delivery saving", async () => {
+  mockStripe("cs_test_fixture", 475, 3);
+  const form = payload(); form.set("quantity", "3"); form.set("deliveryMode", "together");
+  form.append("adventure", "ski"); form.append("adventure", "espace");
+  expect((await api(request(form), bindings)).status).toBe(200);
+  mockPromotion(1282);
+  expect((await webhook(String(form.get("attemptId")), "cs_test_fixture", { amount: 1282, subtotal: 1425, discount: 143 })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT subtotal_cents,amount_cents,coupon_discount_cents FROM orders").first())
+    .toEqual({ subtotal_cents: 1425, amount_cents: 1282, coupon_discount_cents: 143 });
+});
+
+it.each([
+  { amount: 630, subtotal: 800, discount: 170 },
+  { amount: 630, subtotal: 700, discount: 60 },
+  { amount: 0, subtotal: 700, discount: 701 },
+  { amount: 700, subtotal: 700, discount: -1 },
+  { amount: 629.5, subtotal: 700, discount: 70.5 },
+  { amount: 630, subtotal: 700, discount: 70, tax: 10 },
+  { amount: 630, subtotal: 700, discount: 70, shippingAmount: 10 },
+  { amount: 630, subtotal: 700, discount: 70, currency: "usd" },
+])("rejects inconsistent Stripe price details: %j", async opts => {
+  const fetch = mockStripe(); const form = payload();
+  await api(request(form), bindings);
+  fetch.mockClear();
+  expect((await webhook(String(form.get("attemptId")), "cs_test_fixture", opts)).status).toBe(409);
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT status FROM orders").first())?.status).toBe("pending");
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(0);
+});
+
+it("never fulfils a nonzero session marked no_payment_required", async () => {
+  mockStripe(); const form = payload(); await api(request(form), bindings);
+  expect((await webhook(String(form.get("attemptId")), "cs_test_fixture", { paid: "no_payment_required" })).status).toBe(200);
+  expect((await env.DB.prepare("SELECT status FROM orders").first())?.status).toBe("pending");
+});
+
+it("retries promotion lookup failures without recording payment or releasing fulfilment", async () => {
+  mockStripe(); const form = payload(); await api(request(form), bindings);
+  const id = String(form.get("attemptId"));
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ error: { message: "Unavailable", type: "invalid_request_error" } }, { status: 400 }));
+  expect((await webhook(id, "cs_test_fixture", { amount: 630, discount: 70 })).status).toBe(503);
+  expect((await env.DB.prepare("SELECT status FROM orders").first())?.status).toBe("pending");
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM stripe_events").first())?.n).toBe(0);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(0);
+  mockPromotion(630);
+  expect((await webhook(id, "cs_test_fixture", { amount: 630, discount: 70 })).status).toBe(200);
+});
+
+it("still confirms legacy fixed-price sessions and preserves their original email restriction", async () => {
+  mockStripe(); const form = payload(); await api(request(form), bindings);
+  const id = String(form.get("attemptId"));
+  await env.DB.prepare("UPDATE orders SET discount_source='legacy',amount_cents=0,coupon_discount_cents=700,coupon_email='free@example.com' WHERE id=?").bind(id).run();
+  expect((await webhook(id, "cs_test_fixture", { amount: 700 })).status).toBe(409);
+  expect((await webhook(id, "cs_test_fixture", { amount: 0, paid: "no_payment_required" })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT status,delivery_status,amount_cents FROM orders").first())
+    .toEqual({ status: "paid", delivery_status: "needs_review", amount_cents: 0 });
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox").first())?.n).toBe(0);
 });
