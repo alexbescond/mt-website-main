@@ -1,4 +1,5 @@
 ---
+import { TOGETHER_DISCOUNT_CENTS, formatPrice } from "../lib/catalog";
 import Base from "../layouts/Base.astro";
 ---
 
@@ -65,12 +66,14 @@ import Base from "../layouts/Base.astro";
     </p>
     <p>
       Grille proposée : 1 carte à 7 €, 2 à 12 €, 3 à 16,50 €, 4 à 21 € et 5 à 25 €.
+      Pour 2 cartes ou plus envoyées ensemble, une remise de {formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte s’applique à cette grille.
       Les frais de port en France métropolitaine sont inclus. Paiement unique,
       sans abonnement ni renouvellement automatique.
     </p>
     <p>
-      Les cartes sont prévues pour être expédiées à 7 jours d’intervalle, à partir
-      du premier envoi et à la même adresse. Les dates de réception dépendent des
+      Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à partir
+      du premier envoi et à la même adresse. Le client peut aussi choisir de faire
+      expédier toutes les cartes ensemble dans un seul envoi. Les dates de réception dépendent des
       délais postaux. Le format, le papier, le délai de préparation du premier
       envoi et le traitement fiscal seront confirmés avant l’ouverture des ventes.
     </p>

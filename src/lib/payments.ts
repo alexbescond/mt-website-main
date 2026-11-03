@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { paidOrderStatements } from "./tracking";
-import { companions, SEND_INTERVAL_DAYS } from "./catalog";
+import { companions, SEND_INTERVAL_DAYS, deliveryLabel } from "./catalog";
 import {
   InputError,
   limitedBody,
@@ -119,8 +119,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
   // Record the intent first: interrupted uploads are covered by the retention task.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   )
     .bind(
       id,
@@ -149,6 +149,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
       data.unitPriceCents,
       JSON.stringify(data.cardAdventures),
       SEND_INTERVAL_DAYS,
+      data.deliveryMode,
     )
     .run();
   const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
@@ -183,13 +184,13 @@ export async function createCheckout(request: Request, env: AppEnv) {
             product_data: {
               name: `Carte postale personnalisée — ${companions[data.companion].character}`,
               description:
-                "Une carte expédiée tous les 7 jours — frais de port inclus en France métropolitaine",
+                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine`,
             },
           },
         },
       ],
       success_url: `${origin}/confirmation`,
-      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.cardAdventures[0]}&compagnon=${data.companion}&cartes=${data.quantity}`,
+      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.cardAdventures[0]}&compagnon=${data.companion}&cartes=${data.quantity}&envoi=${data.deliveryMode}`,
     },
     { idempotencyKey: `mt-checkout-${id}` },
   );

@@ -1,7 +1,7 @@
 import { InputError } from "./validation";
 import { limitAccess, readJson, requireAdmin, trackingOrderId } from "./tracking-auth";
 import { parisDate, type TrackingCard, type TrackingOrder } from "./tracking-model";
-import type { CompanionId } from "./catalog";
+import type { CompanionId, DeliveryMode } from "./catalog";
 
 interface StoredTrackingOrder {
   id: string;
@@ -9,6 +9,7 @@ interface StoredTrackingOrder {
   companion_name: string;
   card_quantity: number;
   paid_at: number;
+  delivery_mode: DeliveryMode;
 }
 export interface AdminOrder extends TrackingOrder {
   id: string;
@@ -22,7 +23,7 @@ export interface AdminOrder extends TrackingOrder {
 }
 function publicOrder(row: StoredTrackingOrder, cards: TrackingCard[]): TrackingOrder {
   return { reference: row.id.slice(0, 8).toUpperCase(), companion: row.companion_type,
-    companionName: row.companion_name, quantity: row.card_quantity, paidAt: row.paid_at, cards };
+    companionName: row.companion_name, quantity: row.card_quantity, paidAt: row.paid_at, deliveryMode: row.delivery_mode, cards };
 }
 async function cardsFor(env: AppEnv, id: string) {
   const { results } = await env.DB.prepare("SELECT position,adventure,state,planned_date,sent_date,version FROM order_cards WHERE order_id=? ORDER BY position")
@@ -31,7 +32,7 @@ async function cardsFor(env: AppEnv, id: string) {
 }
 export async function customerTracking(request: Request, env: AppEnv) {
   const id = await trackingOrderId(request, env);
-  const row = await env.DB.prepare("SELECT id,companion_type,companion_name,card_quantity,paid_at FROM orders WHERE id=? AND status='paid' AND product_type='postcards' AND payment_mode=?")
+  const row = await env.DB.prepare("SELECT id,companion_type,companion_name,card_quantity,paid_at,delivery_mode FROM orders WHERE id=? AND status='paid' AND product_type='postcards' AND payment_mode=?")
     .bind(id, env.CHECKOUT_MODE).first<StoredTrackingOrder>();
   if (!row) throw new InputError("Cette commande n’est pas disponible.", 404);
   return Response.json(publicOrder(row, await cardsFor(env, id)));
@@ -95,13 +96,27 @@ export async function updateCard(request: Request, env: AppEnv, orderId: string,
     throw new InputError("Mise à jour invalide.");
   const sentDate = state === "sent" ? validateDate(body.sentDate) : null;
   if (sentDate && sentDate > parisDate()) throw new InputError("Une expédition réelle ne peut pas être dans le futur.");
-  const paid = await env.DB.prepare("SELECT paid_at FROM orders WHERE id=? AND status='paid' AND payment_mode=?")
-    .bind(orderId, env.CHECKOUT_MODE).first<{ paid_at: number }>();
+  const paid = await env.DB.prepare("SELECT paid_at,delivery_mode FROM orders WHERE id=? AND status='paid' AND payment_mode=?")
+    .bind(orderId, env.CHECKOUT_MODE).first<{ paid_at: number; delivery_mode: DeliveryMode }>();
   if (!paid) throw new InputError("Commande introuvable.", 404);
   if (sentDate && sentDate < parisDate(paid.paid_at)) throw new InputError("La date d’envoi précède le paiement.");
   const previous = state === "preparing" ? "queued" : state === "ready" ? "preparing" : "ready";
   const now = Date.now();
   const writeId = crypto.randomUUID();
+  if (state === "sent" && paid.delivery_mode === "together") {
+    // Claim one ready card, then dispatch the entire ready bundle in the same transaction.
+    // A stale version, incomplete preparation or duplicate request must change nothing.
+    const result = await env.DB.batch([
+      env.DB.prepare("UPDATE order_cards SET state='sent',sent_date=?,version=version+1,updated_at=?,write_id=? WHERE order_id=? AND position=? AND version=? AND state='ready' AND NOT EXISTS(SELECT 1 FROM order_cards pending WHERE pending.order_id=? AND pending.state!='ready')")
+        .bind(sentDate, now, writeId, orderId, position, body.version, orderId),
+      env.DB.prepare("UPDATE order_cards SET state='sent',sent_date=?,version=version+1,updated_at=?,write_id=? WHERE order_id=? AND state='ready' AND EXISTS(SELECT 1 FROM order_cards claimed WHERE claimed.order_id=? AND claimed.position=? AND claimed.write_id=?)")
+        .bind(sentDate, now, writeId, orderId, orderId, position, writeId),
+      env.DB.prepare("INSERT OR IGNORE INTO notification_outbox(id,order_id,kind,card_position,available_at,created_at) SELECT order_id||'/shipped/together',order_id,'shipped',1,?,? FROM order_cards WHERE order_id=? AND position=? AND write_id=?")
+        .bind(now, now, orderId, position, writeId),
+    ]);
+    if (!result[0].meta.changes) throw new InputError("Toutes les cartes doivent être prêtes pour l’envoi groupé. Actualisez le tableau.", 409);
+    return Response.json({ ok: true });
+  }
   const statements = [
     env.DB.prepare("UPDATE order_cards SET state=?,sent_date=?,version=version+1,updated_at=?,write_id=? WHERE order_id=? AND position=? AND version=? AND state=? AND EXISTS(SELECT 1 FROM orders o WHERE o.id=order_id AND o.status='paid' AND o.payment_mode=?) AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM order_cards earlier WHERE earlier.order_id=? AND earlier.position<? AND (earlier.state!='sent' OR earlier.sent_date>?)))")
       .bind(state, sentDate, now, writeId, orderId, position, body.version, previous, env.CHECKOUT_MODE, sentDate, orderId, position, sentDate),
@@ -134,7 +149,7 @@ export async function scheduleOrder(request: Request, env: AppEnv, orderId: stri
   const result = await env.DB.batch([
     env.DB.prepare("UPDATE order_cards SET planned_date=?,version=version+1,write_id=? WHERE order_id=? AND position=1 AND version=? AND state!='sent' AND EXISTS(SELECT 1 FROM orders WHERE id=order_id AND status='paid' AND payment_mode=?)")
       .bind(date, writeId, orderId, body.version, env.CHECKOUT_MODE),
-    env.DB.prepare("UPDATE order_cards SET planned_date=date(?,'+'||((position-1)*7)||' days'),version=version+1 WHERE order_id=? AND position>1 AND state!='sent' AND EXISTS(SELECT 1 FROM order_cards first WHERE first.order_id=? AND first.position=1 AND first.write_id=?)")
+    env.DB.prepare("UPDATE order_cards SET planned_date=date(?,'+'||((position-1)*(SELECT CASE WHEN delivery_mode='together' THEN 0 ELSE send_interval_days END FROM orders WHERE id=order_id))||' days'),version=version+1 WHERE order_id=? AND position>1 AND state!='sent' AND EXISTS(SELECT 1 FROM order_cards first WHERE first.order_id=? AND first.position=1 AND first.write_id=?)")
       .bind(date, orderId, orderId, writeId),
   ]);
   if (!result[0].meta.changes) throw new InputError("Le planning a changé ou le premier envoi est déjà parti. Actualisez le tableau.", 409);

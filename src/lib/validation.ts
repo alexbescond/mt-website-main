@@ -1,4 +1,4 @@
-import { isAdventureId, isCompanionId, getCardPack } from "./catalog";
+import { isAdventureId, isCompanionId, getOrderPrice, isDeliveryMode } from "./catalog";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -58,7 +58,10 @@ export function validateOrder(data: FormData) {
     throw new InputError("Choisissez une aventure pour chaque carte.");
   if (new Set(cardAdventures).size !== cardAdventures.length)
     throw new InputError("Choisissez une aventure différente pour chaque carte.");
-  const pack = getCardPack(quantity);
+  const requestedDelivery = value(data, "deliveryMode", 10, false) || "weekly";
+  if (!isDeliveryMode(requestedDelivery)) throw new InputError("Choisissez un mode d’envoi valide.");
+  const deliveryMode = quantity === 1 ? "weekly" : requestedDelivery;
+  const pack = getOrderPrice(quantity, deliveryMode);
   const companion = value(data, "companion", 10);
   if (!isCompanionId(companion))
     throw new InputError("Choisissez un doudou ou une tétine.");
@@ -85,6 +88,7 @@ export function validateOrder(data: FormData) {
   return {
     attemptId,
     quantity,
+    deliveryMode,
     cardAdventures,
     unitPriceCents: pack.unitCents,
     amountCents: pack.totalCents,

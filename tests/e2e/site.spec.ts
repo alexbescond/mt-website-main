@@ -119,11 +119,12 @@ test("invalid companion photos can be replaced with a valid image", async ({
 test("private endpoints, cancel, 404 and noindex behave correctly", async ({
   page,
   request,
+  baseURL,
 }) => {
   expect(
     (
       await request.post("/api/checkout", {
-        headers: { Origin: "http://127.0.0.1:8790" },
+        headers: { Origin: new URL(baseURL!).origin },
       })
     ).status(),
   ).toBe(503);
@@ -312,4 +313,47 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await page.getByRole('button', { name: 'Terminer la démonstration' }).click();
   await expect(page).toHaveURL(/confirmation\?demo=1/);
   expect(posts).toEqual([]);
+});
+
+test("delivery defaults to weekly and grouped savings follow edits and checkout", async ({ page }) => {
+  await page.goto('/personnaliser?cartes=5');
+  await page.getByLabel('Le prénom de votre enfant').fill('Camille');
+  await page.locator('#pacifierPhoto').setInputFiles('public/images/tetine-transat.webp');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.locator('[name="deliveryMode"][value="weekly"]')).toBeChecked();
+  await expect(page.locator('#summary-total')).toHaveText('25,00 €');
+  await page.locator('[name="deliveryMode"][value="together"]').check();
+  await expect(page.locator('#summary-total')).toHaveText('21,25 €');
+  await expect(page.locator('#summary-discount')).toHaveText('−3,75 €');
+  await expect(page.locator('#summary-cards li').last()).toContainText('Envoi groupé');
+  await expect(page.locator('#summary-cadence')).toHaveText('Toutes les cartes dans un seul envoi');
+  await page.getByLabel('Votre prénom', { exact: false }).fill('Alex');
+  await page.getByLabel('Votre nom', { exact: false }).fill('Exemple');
+  await page.getByLabel('Votre adresse e-mail').fill('parent@example.com');
+  await page.getByLabel('Adresse de livraison', { exact: false }).fill('1 rue du Test');
+  await page.getByLabel('Code postal').fill('75001');
+  await page.getByLabel('Ville', { exact: false }).fill('Paris');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.locator('#review-book')).toContainText('21,25 €');
+  await expect(page.locator('#review-delivery')).toContainText('un seul envoi');
+  await expect(page.locator('#review-plan li').last()).toContainText('Envoi groupé');
+  await page.locator('[data-edit="1"]').click();
+  await page.locator('[name="deliveryMode"][value="weekly"]').check();
+  await expect(page.locator('#summary-total')).toHaveText('25,00 €');
+  await expect(page.locator('#summary-discount-row')).toBeHidden();
+  await expect(page.locator('#summary-cards li').last()).toContainText('+ 28 jours');
+  await page.locator('[name="deliveryMode"][value="together"]').check();
+  await page.locator('#previous-step').click();
+  await page.locator('[name="quantity"][value="2"]').check();
+  await expect(page.locator('#summary-total')).toHaveText('10,50 €');
+  await expect(page.locator('#summary-discount')).toHaveText('−1,50 €');
+  await page.locator('[name="quantity"][value="1"]').check();
+  await expect(page.locator('#summary-total')).toHaveText('7,00 €');
+  await expect(page.locator('#summary-discount-row')).toBeHidden();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.locator('#delivery-options')).toBeHidden();
+  await expect(page.locator('#single-delivery-note')).toBeVisible();
+  await page.goto('/personnaliser?cartes=3&envoi=together&annule=1');
+  await expect(page.locator('#summary-total')).toHaveText('14,25 €');
+  await expect(page.locator('#summary-cadence')).toContainText('un seul envoi');
 });

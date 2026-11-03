@@ -1,3 +1,4 @@
+import { deliveryLabel } from "../lib/catalog";
 import { addDays, cardPresentation, cardStates, displayDate, parisDate, type TrackingCard } from "../lib/tracking-model";
 import type { AdminOrder } from "../lib/tracking";
 import { appendChildren, apiRequest, demoOrder, element, errorText, progressCopy, saveDemo } from "./tracking-common";
@@ -28,6 +29,7 @@ function renderOrder(order: AdminOrder) {
   const title = element("div");
   appendChildren(title, element("span", "eyebrow", "COMMANDE " + order.reference), element("h2", "", order.companionName || "Son compagnon"), element("p", "", order.parent + " · Pour " + order.child));
   appendChildren(header, title, element("span", "tracking-badge", progressCopy(order).text)); appendChildren(article, header);
+  appendChildren(article, element("p", "summary-cadence", deliveryLabel(order.quantity, order.deliveryMode)));
   const details = element("details");
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
   const customer = element("div", "admin-customer");
@@ -68,12 +70,19 @@ function renderOrder(order: AdminOrder) {
     appendChildren(row, image, copy);
     if (card.state !== "sent") {
       const next = card.state === "queued" ? "preparing" : card.state === "preparing" ? "ready" : "sent";
-      const button = element("button", "button button-small", next === "preparing" ? "Commencer la préparation" : next === "ready" ? "Marquer comme prête" : "Marquer comme expédiée");
+      const button = element("button", "button button-small", next === "preparing" ? "Commencer la préparation" : next === "ready" ? "Marquer comme prête" : order.deliveryMode === "together" ? "Expédier toutes les cartes" : "Marquer comme expédiée");
       button.type = "button";
+      if (next === "sent" && order.deliveryMode === "together") {
+        button.disabled = order.cards.some(item => item.state !== "ready");
+        button.title = "Toutes les cartes doivent être prêtes avant l’envoi groupé.";
+      }
       button.addEventListener("click", async () => {
         if (next === "sent") {
           selected = { order, card };
-          document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + " · Carte " + card.position + " · " + scene.title;
+          document.querySelector("#dispatch-card-title")!.textContent = "Commande " + order.reference + (order.deliveryMode === "together" ? " · Envoi groupé de toutes les cartes" : " · Carte " + card.position + " · " + scene.title);
+          document.querySelector("#dispatch-explanation")!.textContent = order.deliveryMode === "together"
+            ? "Toutes les cartes seront marquées comme expédiées à cette date. Le parent recevra une seule notification pour cet envoi groupé."
+            : "Le suivi du parent sera mis à jour et une notification sera préparée. Les cartes suivantes seront planifiées à 7 jours d’intervalle à partir de ce départ.";
           const date = document.querySelector<HTMLInputElement>("#dispatch-date")!;
           date.max = parisDate(); date.value = parisDate();
           date.min = order.cards[card.position - 2]?.sent_date || parisDate(order.paidAt);
