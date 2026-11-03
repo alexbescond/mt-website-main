@@ -73,12 +73,6 @@ export function validateOrder(data: FormData) {
     )
   )
     throw new InputError("Veuillez recharger le formulaire.");
-  // Contact details are collected by Stripe. Only coupon eligibility needs an
-  // email before redirecting, and it must not supply the delivery address.
-  const hasCoupon = typeof data.get("couponCode") === "string" && String(data.get("couponCode")).trim() !== "";
-  const couponEmail = hasCoupon ? value(data, "couponEmail", 254).toLowerCase() : "";
-  if (hasCoupon && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(couponEmail))
-    throw new InputError("Indiquez une adresse e-mail valide pour votre code promo.");
   if (data.get("termsConsent") !== "on")
     throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
@@ -90,7 +84,6 @@ export function validateOrder(data: FormData) {
     amountCents: pack.totalCents,
     companion,
     companionName,
-    couponEmail,
     childName: value(data, "childName", 60),
     notes: value(data, "notes", 500, false),
   };

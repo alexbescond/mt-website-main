@@ -143,19 +143,12 @@
   margin-top: 10px;
   margin-bottom: 10px;
 }
-.coupon-box {
+#stripe-promo-note {
   margin-block: 24px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
-.coupon-box summary { cursor: pointer; font-size: 13px; font-weight: 550; }
-.coupon-box .field { margin-block: 16px; }
-.coupon-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-.coupon-actions .button { padding: 10px 18px; }
-#coupon-message { font-size: 12px; margin: 12px 0 0; }
-#coupon-message:empty { display: none; }
-#coupon-code[aria-invalid="true"] { border-color: #b95541; }
 fieldset {
   margin: 0;
   padding: 0;

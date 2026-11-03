@@ -8,6 +8,7 @@ import companions from "../../migrations/0002_companions.sql?raw";
 import postcards from "../../migrations/0003_postcards.sql?raw";
 import stripeDelivery from "../../migrations/0006_stripe_delivery.sql?raw";
 import tracking from "../../migrations/0004_tracking.sql?raw";
+import stripePromotions from "../../migrations/0008_stripe_promotions.sql?raw";
 import coupons from "../../migrations/0007_coupons.sql?raw";
 import { api } from "../../src/lib/api";
 import { paidOrderStatements } from "../../src/lib/tracking";
@@ -21,7 +22,7 @@ const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false"
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) } };
 beforeEach(async () => {
-  await env.DB.batch([base, companions, postcards, tracking, delivery, stripeDelivery, coupons].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await env.DB.batch([base, companions, postcards, tracking, delivery, stripeDelivery, coupons, stripePromotions].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
 });
 afterEach(async () => { vi.restoreAllMocks(); await reset(); });
 function call(path: string, body?: unknown, cookie?: string, custom = bindings, requestOrigin = origin) {

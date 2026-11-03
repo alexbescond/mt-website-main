@@ -27,7 +27,7 @@ test("order reaches review without collecting contact details or premature error
   await expect(page).toHaveURL(/confirmation\?demo=1/);
 });
 
-test("checkout submits personalization only and checkout can be retried after an error", async ({ page }) => {
+test("checkout submits personalization only and checkout can be retried after an error", async ({ page }, testInfo) => {
   await page.route("**/api/config", route => route.fulfill({ json: { mode: "test", available: true } }));
   let attempts = 0;
   const bodies: string[] = [];
@@ -44,6 +44,9 @@ test("checkout submits personalization only and checkout can be retried after an
   await page.locator("#pacifierPhoto").setInputFiles("public/images/tetine-transat.webp");
   await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator("#payment-note")).toContainText("adresse de livraison sur la page sécurisée Stripe");
+  await expect(page.locator("#stripe-promo-note")).toContainText("Vous pourrez l’ajouter sur Stripe");
+  await expect(page.locator('input[type="email"], [name="couponCode"]')).toHaveCount(0);
+  await page.screenshot({ path: `.context/stripe-promotions-${testInfo.project.name}.png`, fullPage: true });
   await page.locator('[name="termsConsent"]').check();
   await page.getByRole("button", { name: "Tester la commande avec Stripe" }).click();
   await expect(page.locator("#form-error")).toHaveText("Stripe temporairement indisponible.");
@@ -54,7 +57,7 @@ test("checkout submits personalization only and checkout can be retried after an
   for (const body of bodies) {
     expect(body).toContain('name="childName"');
     expect(body).toContain('name="pacifierPhoto"');
-    for (const field of ["firstName", "lastName", "address", "postalCode", "city", "email"]) {
+    for (const field of ["firstName", "lastName", "address", "postalCode", "city", "email", "couponEmail", "couponCode", "couponExpectedTotal"]) {
       expect(body).not.toContain(`name="${field}"`);
     }
   }
@@ -71,5 +74,15 @@ test("confirmation distinguishes payment from delivery needing review", async ({
   await expect(page.locator("#status-title")).toHaveText("Votre paiement est confirmé.");
   await expect(page.locator("#status-copy")).toContainText("ne repassez pas commande");
   await expect(page.locator("#status-copy")).toContainText("vérification avant la préparation");
+  await expect(page.locator("#follow-cards")).toBeVisible();
+});
+
+
+test("a free Stripe order is confirmed without payment messaging", async ({ page }) => {
+  await page.route("**/api/order-status", route => route.fulfill({ json: {
+    status: "paid", free: true, reference: "TESTFREE", deliveryStatus: "ready",
+  } }));
+  await page.goto("/confirmation");
+  await expect(page.locator("#status-copy")).toContainText("Aucun paiement n’a été nécessaire");
   await expect(page.locator("#follow-cards")).toBeVisible();
 });
