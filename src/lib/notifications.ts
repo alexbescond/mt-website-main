@@ -1,29 +1,9 @@
 import { trackingLink } from "./tracking-auth";
-import { displayDate } from "./tracking-model";
+import { notificationMessage } from "./email-templates";
 import { ResendError, sendResendEmail } from "./resend";
 
-function escapeHtml(text: string) {
-  return text.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
-}
-export function notificationMessage(kind: string, reference: string, link: string, position?: number, date?: string) {
-  const subject = kind === "shipped" ? "Votre carte " + position + " a pris la route !" :
-    kind === "access" ? "Votre lien pour suivre les cartes" : "Le voyage de son compagnon commence";
-  const copy = kind === "shipped" ?
-    "La carte " + position + " de votre commande " + reference + " a été expédiée le " + displayDate(date!) + ". La date de réception dépend de l’acheminement postal." :
-    kind === "access" ? "Retrouvez l’avancement de chaque carte de votre commande " + reference + "." :
-    "Votre paiement est confirmé et votre commande " + reference + " est enregistrée. Vous pouvez suivre la préparation et l’expédition de chaque carte.";
-  const footer = "Ce lien privé est valable 30 jours. Gardez-le pour vous. Vous pourrez demander un nouveau lien depuis la page de suivi.";
-  return {
-    subject,
-    text: subject + "\n\n" + copy + "\n\nSuivre mes cartes : " + link + "\n\n" + footer + "\n\nLes aventures de mon doudou et ma tétine",
-    html: '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>' + escapeHtml(subject) +
-      '</title></head><body style="margin:0;background:#faf7f0;color:#293e36;font-family:Arial,sans-serif"><table role="presentation" style="width:100%;padding:32px 16px"><tr><td align="center"><table role="presentation" style="width:100%;max-width:560px;background:#fff;border-radius:20px;padding:32px"><tr><td><p style="font-size:12px;letter-spacing:2px">DES NOUVELLES DE SON VOYAGE</p><h1 style="font-size:28px">' +
-      escapeHtml(subject) + '</h1><p style="font-size:16px;line-height:1.7">' + escapeHtml(copy) +
-      '</p><p style="margin:32px 0"><a style="background:#294f42;color:#fff;padding:16px 24px;border-radius:8px;text-decoration:none;display:inline-block" href="' +
-      escapeHtml(link) + '">Suivre mes cartes</a></p><p style="font-size:13px;line-height:1.6">' + escapeHtml(footer) +
-      '</p><p style="font-size:13px">Les aventures de mon doudou et ma tétine</p></td></tr></table></td></tr></table></body></html>',
-  };
-}
+export { notificationMessage };
+
 export async function sendNotifications(env: AppEnv) {
   if (env.EMAIL_ENABLED !== "true" || env.CHECKOUT_MODE !== "live" || !env.RESEND_API_KEY || !env.EMAIL_FROM || !env.TRACKING_LINK_SECRET) return;
   const now = Date.now();

@@ -12,7 +12,7 @@ import { trackingLink } from "../../src/lib/tracking-auth";
 import { notificationMessage, sendNotifications } from "../../src/lib/notifications";
 import { addDays, parisDate } from "../../src/lib/tracking-model";
 
-const origin = "https://les-vacances-de-ma-tetine.com";
+const origin = "https://les-aventures-de-doudou-tetine.com";
 const adminPassword = "fixture-admin-password-for-local-tests";
 const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false", EMAIL_FROM: "bonjour@example.com", EMAIL_REPLY_TO: "",
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
@@ -181,7 +181,7 @@ it("sends through Resend only in live mode and reuses an identical request after
   expect(request.body).toBe(send.mock.calls[0][1]!.body);
   const body = JSON.parse(request.body as string);
   expect(body).toMatchObject({ from: "Les aventures de mon doudou et ma tétine <bonjour@example.com>", to: ["parent@example.com"],
-    subject: "Le voyage de son compagnon commence", reply_to: "support@example.com" });
+    subject: `Votre commande ${id.slice(0, 8).toUpperCase()} est confirmée`, reply_to: "support@example.com" });
   expect(body.html).toContain("/suivi#acces=");
   expect(body.text).toContain("/suivi#acces=");
   expect(body.html).not.toContain("Camille");
@@ -233,7 +233,9 @@ it("uses different idempotency keys for confirmations, dispatches and recovery e
   expect(new Set(keys).size).toBe(3);
   const bodies = send.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
   expect(bodies.map(body => body.subject)).toEqual(expect.arrayContaining([
-    "Le voyage de son compagnon commence", "Votre carte 1 a pris la route !", "Votre lien pour suivre les cartes",
+    `Votre commande ${id.slice(0, 8).toUpperCase()} est confirmée`,
+    `Carte 1 expédiée — commande ${id.slice(0, 8).toUpperCase()}`,
+    `Votre lien de suivi — commande ${id.slice(0, 8).toUpperCase()}`,
   ]));
   for (const body of bodies) expect(body).not.toHaveProperty("reply_to");
   const message = notificationMessage("access", "<script>", "https://example.com/#x");

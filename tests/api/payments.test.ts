@@ -11,7 +11,7 @@ import { api } from "../../src/lib/api";
 import { cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
 
-const origin = "https://les-vacances-de-ma-tetine.com";
+const origin = "https://les-aventures-de-doudou-tetine.com";
 const bindings: AppEnv = {
   ...env,
   PHOTOS: (env as unknown as { PHOTOS: R2Bucket }).PHOTOS,
@@ -48,7 +48,6 @@ function payload() {
     city: "Paris",
     country: "FR",
     notes: "",
-    photoConsent: "on",
     termsConsent: "on",
   }))
     form.set(k, v);
@@ -233,7 +232,7 @@ it("rejects tampered signatures, wrong sessions, amounts, modes and stale events
     )?.status,
   ).toBe("pending");
 });
-it("rejects cross-origin requests, demo payments, live credentials in test mode and missing consent", async () => {
+it("rejects cross-origin requests, demo payments, live credentials in test mode and missing terms acceptance", async () => {
   expect(
     (await api(request(payload(), "https://evil.example"), bindings)).status,
   ).toBe(403);
@@ -253,7 +252,7 @@ it("rejects cross-origin requests, demo payments, live credentials in test mode 
     ).status,
   ).toBe(503);
   const form = payload();
-  form.delete("photoConsent");
+  form.delete("termsConsent");
   expect((await api(request(form), bindings)).status).toBe(400);
   expect(
     (await env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first())

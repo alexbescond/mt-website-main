@@ -124,7 +124,7 @@ import "../styles/order.css";
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 required
-                aria-describedby="pacifier-error"
+                aria-describedby="pacifier-error photo-use-notice"
               />
               <img
                 class="upload-preview"
@@ -137,6 +137,14 @@ import "../styles/order.css";
               class="field-error"
               aria-live="polite"
             ></span>
+            <p id="photo-use-notice">
+              La photo de son compagnon sert uniquement à créer vos cartes.{" "}
+              <a
+                href="/informations#confidentialite"
+                target="_blank"
+                rel="noopener"
+              >En savoir plus sur les photos</a>.
+            </p>
           </div>
           <label class="field">
             Un petit mot pour notre équipe{" "}
@@ -147,22 +155,6 @@ import "../styles/order.css";
               maxlength="500"
               placeholder="Une petite habitude, un détail qui compte, une préférence…"
             ></textarea>
-          </label>
-          <label class="checkbox-field">
-            <input name="photoConsent" type="checkbox" required />
-            <span>
-              Je suis le parent ou le représentant légal de l’enfant et
-              j’autorise l’utilisation de la photo de son compagnon uniquement
-              pour créer ces cartes.{" "}
-              <a
-                href="/informations#confidentialite"
-                target="_blank"
-                rel="noopener"
-              >
-                En savoir plus sur les photos
-              </a>
-              .
-            </span>
           </label>
         </section>
         <section data-step="1" class="form-panel" hidden>

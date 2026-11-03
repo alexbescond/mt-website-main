@@ -44,6 +44,16 @@ L’atelier /admin utilise une session de douze heures, dont seule l’empreinte
 
 L’atelier contient les filtres de préparation, d’expédition du jour, de commandes terminées, une recherche et une pagination. Une commande donne accès aux coordonnées, à la personnalisation, à la photo et au planning. « Marquer comme expédiée » ouvre une confirmation avec la date réelle du dépôt.
 
+## Contenu des e-mails
+
+Les trois modèles sont rédigés dans `src/lib/email-templates.ts`, puis utilisés par `src/lib/notifications.ts` pour les envois Resend :
+
+- **Confirmation** (« Votre commande A1B2C3D4 est confirmée ») : paiement reçu, contenu des cartes, préparation de la première carte et rythme des suivantes. Bouton « Suivre mes cartes ».
+- **Expédition** (« Carte 2 expédiée — commande A1B2C3D4 ») : numéro de la carte, date réelle d’expédition et renvoi vers le suivi pour les envois restants. Bouton « Suivre mes cartes ».
+- **Nouveau lien de suivi** (« Votre lien de suivi — commande A1B2C3D4 ») : accès au suivi sans compte, contenu de la page et indication pour ignorer une demande non sollicitée. Bouton « Accéder au suivi ».
+
+Les e-mails s’adressent aux parents : le ton reste chaleureux mais sobre, sans diminutifs, métaphores de voyage ni points d’exclamation. Le vocabulaire ludique du site (« carnet de voyage », « compagnon ») n’y est pas repris. Chaque e-mail possède un objet avec la référence de commande, un aperçu de boîte de réception, une version HTML et une version texte. La présentation reprend le crème, le vert sauge et le terracotta du site, avec des polices système pour rester lisible sans chargement externe. Le lien privé est valable 30 jours ; le pied de page indique comment le renouveler et renvoie aux questions fréquentes. Les dates annoncées sont celles des expéditions, sans promesse de date de réception. Aucune donnée personnelle d’enfant ni photo n’est incluse.
+
 ## Activer les e-mails Resend
 
 Adresse expéditrice retenue : `no-reply@les-aventures-de-doudou-tetine.com` (variable `EMAIL_FROM`). Le domaine `les-aventures-de-doudou-tetine.com` doit être actif et vérifié dans Resend avant l’activation des envois.

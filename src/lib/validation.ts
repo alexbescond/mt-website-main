@@ -80,7 +80,7 @@ export function validateOrder(data: FormData) {
     throw new InputError(
       "La livraison est disponible en France métropolitaine.",
     );
-  if (data.get("photoConsent") !== "on" || data.get("termsConsent") !== "on")
+  if (data.get("termsConsent") !== "on")
     throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
     attemptId,
