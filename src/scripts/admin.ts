@@ -38,7 +38,7 @@ function renderOrder(order: AdminOrder) {
   appendChildren(title, element("span", "eyebrow", "COMMANDE " + order.reference), element("h2", "", order.companionName || "Son compagnon"), element("p", "", order.parent + " · Pour " + order.child));
   appendChildren(header, title, element("span", "tracking-badge", progressCopy(order).text)); appendChildren(article, header);
   const deliveryBlocked = order.deliveryStatus && order.deliveryStatus !== "ready";
-  if (deliveryBlocked) appendChildren(article, element("p", "notice", "Coordonnées de livraison à vérifier dans Stripe : adresse incomplète ou hors France métropolitaine. Préparation et expédition bloquées. Contacter le client avant de poursuivre ou de rembourser."));
+  if (deliveryBlocked) appendChildren(article, element("p", "notice", "Coordonnées de livraison à vérifier dans Stripe : adresse incomplète ou hors zone de livraison (France métropolitaine, Belgique, Luxembourg et Suisse). Préparation et expédition bloquées. Contacter le client avant de poursuivre ou de rembourser."));
   appendChildren(article, element("p", "summary-cadence", deliveryLabel(order.quantity, order.deliveryMode)));
   const details = element("details");
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
