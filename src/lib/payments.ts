@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { paidOrderStatements } from "./tracking";
 import { companions, SEND_INTERVAL_DAYS, deliveryLabel } from "./catalog";
+import { COUPON_UNAVAILABLE, couponPrice, normalizeCoupon } from "./coupons";
 import {
   InputError,
   limitedBody,
@@ -36,6 +37,12 @@ type StoredOrder = {
   stripe_session_id: string | null;
   status: string;
   amount_cents: number;
+  subtotal_cents: number;
+  coupon_id: string | null;
+  coupon_email: string | null;
+  coupon_label: string | null;
+  coupon_percent_off: number;
+  coupon_discount_cents: number;
   currency: string;
   payment_mode: string;
   created_at: number;
@@ -86,7 +93,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
   } catch {
     throw new InputError("Formulaire illisible.");
   }
-  const data = validateOrder(form);
+  const data = { ...validateOrder(form), couponCode: normalizeCoupon(form.get("couponCode")) };
   if (form.has("childPhoto"))
     throw new InputError("Seule la photo de son compagnon est acceptée.");
   const pacifier = await validatePhoto(form.get("pacifierPhoto"), true);
@@ -117,11 +124,23 @@ export async function createCheckout(request: Request, env: AppEnv) {
   const token =
     existing?.access_token || crypto.randomUUID() + crypto.randomUUID();
   const pacifierKey = `orders/${id}/pacifier`;
+  const promotion = !existing && data.couponCode
+    ? await couponPrice(env, data.couponCode, data.couponEmail, data.quantity, data.deliveryMode, id)
+    : null;
+  const amountCents = existing?.amount_cents ?? promotion?.totalCents ?? data.amountCents;
+  // A preview is advisory. Never charge more than the price the customer accepted.
+  const expectedTotal = form.get("couponExpectedTotal");
+  if (data.couponCode && expectedTotal !== null &&
+      (typeof expectedTotal !== "string" || !/^\d+$/.test(expectedTotal) || Number(expectedTotal) !== amountCents))
+    throw new InputError("Le montant a changé. Appliquez à nouveau votre code promo avant de continuer.", 409);
   // Record the intent first: interrupted uploads are covered by the retention task.
+  // The conditional insert also reserves coupon usage atomically. Pending orders
+  // hold their reservation until Stripe confirms expiration or payment.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode,delivery_status)
-  VALUES (?,?,?,?,?,'','','','','','','',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode,subtotal_cents,coupon_id,coupon_label,coupon_percent_off,coupon_discount_cents,coupon_first_order,coupon_email,delivery_status)
+  SELECT ?,?,?,?,?,'','','','','','','',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending'
+  ${promotion ? `WHERE EXISTS (${promotion.eligibility.sql} AND c.id=? AND c.percent_off=? AND c.first_order_only=?)` : ""}`,
   )
     .bind(
       id,
@@ -132,7 +151,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
       data.notes,
       pacifierKey,
       null,
-      data.amountCents,
+      amountCents,
       env.CHECKOUT_MODE,
       "2026-11-02",
       Date.now(),
@@ -144,12 +163,21 @@ export async function createCheckout(request: Request, env: AppEnv) {
       JSON.stringify(data.cardAdventures),
       SEND_INTERVAL_DAYS,
       data.deliveryMode,
+      data.amountCents,
+      promotion?.coupon.id ?? existing?.coupon_id ?? null,
+      promotion?.coupon.label ?? existing?.coupon_label ?? null,
+      promotion?.coupon.percent_off ?? existing?.coupon_percent_off ?? 0,
+      promotion?.discountCents ?? existing?.coupon_discount_cents ?? 0,
+      promotion?.coupon.first_order_only ?? 0,
+      data.couponEmail || null,
+      ...(promotion ? [...promotion.eligibility.values, promotion.coupon.id, promotion.coupon.percent_off, promotion.coupon.first_order_only] : []),
     )
     .run();
   const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
     .bind(id)
     .first<StoredOrder>();
-  if (!order || order.request_hash !== requestHash)
+  if (!order) throw new InputError(data.couponCode ? COUPON_UNAVAILABLE : "Cette commande est déjà en cours de préparation.", 409);
+  if (order.request_hash !== requestHash)
     throw new InputError(
       "Cette commande est déjà en cours de préparation.",
       409,
@@ -166,6 +194,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
       mode: "payment",
       locale: "fr",
       allowed_payment_method_types: ["card"],
+      ...(order.coupon_email ? { customer_email: order.coupon_email } : {}),
       shipping_address_collection: { allowed_countries: ["FR"] },
       custom_text: {
         shipping_address: { message: "Livraison en France métropolitaine uniquement (hors codes postaux 97 et 98). Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
@@ -174,14 +203,19 @@ export async function createCheckout(request: Request, env: AppEnv) {
       metadata: { order_id: id },
       line_items: [
         {
-          quantity: data.quantity,
+          // Price the discounted pack as a single item to avoid rounding a
+          // discount per card (e.g. 3 grouped cards: €14.25 minus €1.43).
+          quantity: order.coupon_id ? 1 : data.quantity,
           price_data: {
             currency: "eur",
-            unit_amount: data.unitPriceCents,
+            unit_amount: order.coupon_id ? order.amount_cents : data.unitPriceCents,
             product_data: {
-              name: `Carte postale personnalisée — ${companions[data.companion].character}`,
+              name: order.coupon_id
+                ? `${data.quantity} carte${data.quantity > 1 ? "s" : ""} postale${data.quantity > 1 ? "s" : ""} personnalisée${data.quantity > 1 ? "s" : ""} — ${companions[data.companion].character}`
+                : `Carte postale personnalisée — ${companions[data.companion].character}`,
               description:
-                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine`,
+                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine` +
+                (order.coupon_id ? ` · Remise de ${order.coupon_percent_off} % incluse` : ""),
             },
           },
         },
@@ -241,7 +275,9 @@ export async function stripeWebhook(request: Request, env: AppEnv) {
   if (event.livemode !== (order.payment_mode === "live"))
     throw new InputError("Mode de paiement incohérent.", 409);
   const expired = event.type === "checkout.session.expired";
-  if (!expired && session.payment_status !== "paid")
+  const freeCompleted = event.type === "checkout.session.completed" &&
+    session.payment_status === "no_payment_required" && order.amount_cents === 0;
+  if (!expired && session.payment_status !== "paid" && !freeCompleted)
     return Response.json({ received: true });
   if (
     !expired &&
@@ -250,6 +286,9 @@ export async function stripeWebhook(request: Request, env: AppEnv) {
   )
     throw new InputError("Montant incohérent.", 409);
   const delivery = stripeDelivery(session);
+  // Keep the eligibility identity immutable even if Stripe returns a different
+  // contact email. Hold such orders for review instead of releasing preparation.
+  if (order.coupon_email && delivery.email !== order.coupon_email) delivery.ready = false;
   // A single atomic batch makes repeated and out-of-order deliveries safe.
   await env.DB.batch([
     env.DB.prepare(
@@ -280,14 +319,15 @@ export async function orderStatus(request: Request, env: AppEnv) {
   if (!token || !/^[a-f0-9-]{72}$/.test(token))
     throw new InputError("Commande introuvable.", 404);
   const order = await env.DB.prepare(
-    "SELECT id,status,delivery_status FROM orders WHERE access_token = ?",
+    "SELECT id,status,amount_cents,delivery_status FROM orders WHERE access_token = ?",
   )
     .bind(token)
-    .first<{ id: string; status: string; delivery_status: string }>();
+    .first<{ id: string; status: string; amount_cents: number; delivery_status: string }>();
   if (!order) throw new InputError("Commande introuvable.", 404);
   return Response.json({
     status: order.status,
     reference: order.id.slice(0, 8).toUpperCase(),
+    free: order.amount_cents === 0,
     deliveryStatus: order.delivery_status,
   });
 }
@@ -299,7 +339,7 @@ function stripeDelivery(session: Stripe.Checkout.Session) {
   const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
   const delivery = {
     name: text(shipping?.name),
-    email: text(session.customer_details?.email),
+    email: text(session.customer_details?.email).toLowerCase(),
     address: text(shipping?.address?.line1),
     extra: text(shipping?.address?.line2),
     postalCode: text(shipping?.address?.postal_code),

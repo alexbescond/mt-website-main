@@ -23,6 +23,28 @@ const modeNotice = document.querySelector<HTMLElement>("#mode-notice")!;
 let step = 0;
 let mode = "unavailable";
 let busy = false;
+const couponInput = document.querySelector<HTMLInputElement>("#coupon-code")!;
+const applyCoupon = document.querySelector<HTMLButtonElement>("#apply-coupon")!;
+const removeCoupon = document.querySelector<HTMLButtonElement>("#remove-coupon")!;
+const couponMessage = document.querySelector<HTMLElement>("#coupon-message")!;
+type CouponPreview = { code: string; label: string; percentOff: number; discountCents: number; totalCents: number };
+let appliedCoupon: (CouponPreview & { key: string }) | null = null;
+let couponRequest = 0;
+let couponBusy = false;
+function couponKey() {
+  return JSON.stringify([couponInput.value.trim().toUpperCase(), field("couponEmail").value.trim().toLowerCase(), chosenPack().quantity, chosenDelivery()]);
+}
+function totalCents() { return appliedCoupon?.totalCents ?? chosenPack().totalCents; }
+function clearCoupon(message = "") {
+  appliedCoupon = null;
+  couponRequest++;
+  couponBusy = false;
+  applyCoupon.disabled = false;
+  applyCoupon.textContent = "Appliquer";
+  removeCoupon.hidden = !couponInput.value;
+  couponInput.removeAttribute("aria-invalid");
+  couponMessage.textContent = message;
+}
 function newAttemptId(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   // Local HTTP previews lack randomUUID, but still support secure random bytes.
@@ -146,7 +168,10 @@ function summary() {
   document.querySelector("#summary-subtotal")!.textContent = formatPrice(pack.baseTotalCents);
   document.querySelector<HTMLElement>("#summary-discount-row")!.hidden = pack.discountCents === 0;
   document.querySelector("#summary-discount")!.textContent = `−${formatPrice(pack.discountCents)}`;
-  document.querySelector("#summary-total")!.textContent = formatPrice(pack.totalCents);
+  document.querySelector<HTMLElement>("#summary-coupon-row")!.hidden = !appliedCoupon;
+  document.querySelector("#summary-coupon-label")!.textContent = appliedCoupon ? `${appliedCoupon.label} · −${appliedCoupon.percentOff} %` : "";
+  document.querySelector("#summary-coupon-discount")!.textContent = appliedCoupon ? `−${formatPrice(appliedCoupon.discountCents)}` : "";
+  document.querySelector("#summary-total")!.textContent = formatPrice(totalCents());
   document.querySelector("#summary-cadence")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
   if (step === 1) updatePaymentLabel();
 }
@@ -190,7 +215,7 @@ function review() {
   document.querySelector("#review-book")!.textContent = storyTitle(
     selectedAdventures()[0],
     chosenCompanion(),
-  ) + ` · ${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} · ${formatPrice(pack.totalCents)}`;
+  ) + ` · ${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} · ${formatPrice(totalCents())}`;
   document.querySelector("#review-child")!.textContent =
     `Pour ${field("childName").value.trim()}`;
   document.querySelector("#review-companion")!.textContent =
@@ -207,9 +232,10 @@ function review() {
   }
 }
 function updatePaymentLabel() {
-  const price = formatPrice(chosenPack().totalCents);
-  next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
-  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Paiement unique de ${price}, frais de port inclus en France métropolitaine. Aucun abonnement.`;
+  const price = formatPrice(totalCents());
+  const free = totalCents() === 0;
+  next.textContent = mode === "demo" ? "Terminer la démonstration →" : free ? "Confirmer ma commande gratuite →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : free ? "Votre commande est offerte. Renseignez votre adresse de livraison et confirmez-la sur Stripe, sans carte bancaire ni débit." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Paiement unique de ${price}, frais de port inclus en France métropolitaine. Aucun abonnement.`;
 }
 function go(index: number) {
   step = index;
@@ -232,6 +258,7 @@ function validatePanel(index: number) {
   panels[index].dataset.validated = "true";
   const controls = panels[index].querySelectorAll("input,textarea,select");
   for (const input of controls) {
+    if (input === field("couponEmail") && !couponInput.value.trim()) continue;
     if (
       (input instanceof HTMLInputElement ||
         input instanceof HTMLSelectElement ||
@@ -251,8 +278,66 @@ function showError(text: string) {
   error.hidden = false;
 }
 form.addEventListener("input", () => {
+  if (appliedCoupon && appliedCoupon.key !== couponKey())
+    clearCoupon("Votre commande a changé. Appliquez à nouveau votre code promo.");
+  removeCoupon.hidden = !couponInput.value;
   summary();
+  if (step === 1) review();
   if (!busy) attemptId = newAttemptId();
+});
+async function validateCoupon() {
+  if (busy || couponBusy) return;
+  if (mode !== "test" && mode !== "live") {
+    couponMessage.textContent = "Les codes promo seront disponibles à l’ouverture des commandes.";
+    return;
+  }
+  clearCoupon();
+  const key = couponKey();
+  const serial = ++couponRequest;
+  couponBusy = true;
+  applyCoupon.disabled = true;
+  applyCoupon.textContent = "Vérification…";
+  couponMessage.textContent = "";
+  summary();
+  review();
+  try {
+    const response = await fetch("/api/coupon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: couponInput.value, email: field("couponEmail").value, quantity: chosenPack().quantity, deliveryMode: chosenDelivery() }),
+    });
+    const result = await response.json() as CouponPreview & { error?: string };
+    if (serial !== couponRequest || key !== couponKey()) return;
+    if (!response.ok) throw new Error(result.error || "Impossible de vérifier ce code. Réessayez.");
+    appliedCoupon = { ...result, key };
+    couponMessage.textContent = result.totalCents === 0 ? "Code appliqué : votre commande est offerte." : `Code appliqué : ${formatPrice(result.discountCents)} de remise.`;
+    attemptId = newAttemptId();
+  } catch (e) {
+    if (serial !== couponRequest || key !== couponKey()) return;
+    couponInput.setAttribute("aria-invalid", "true");
+    couponMessage.textContent = e instanceof Error ? e.message : "Impossible de vérifier ce code. Réessayez.";
+  } finally {
+    if (serial === couponRequest) {
+      couponBusy = false;
+      applyCoupon.disabled = false;
+      applyCoupon.textContent = "Appliquer";
+      summary();
+      review();
+    }
+  }
+}
+applyCoupon.addEventListener("click", () => { void validateCoupon(); });
+couponInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") { event.preventDefault(); void validateCoupon(); }
+});
+removeCoupon.addEventListener("click", () => {
+  if (busy) return;
+  couponInput.value = "";
+  clearCoupon();
+  attemptId = newAttemptId();
+  summary();
+  review();
+  couponInput.focus();
 });
 {
   const input = field("pacifierPhoto");
@@ -299,7 +384,7 @@ document
   );
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (busy || !validatePanel(step)) return;
+  if (busy || couponBusy || !validatePanel(step)) return;
   if (step < 1) {
     go(step + 1);
     return;
@@ -315,15 +400,30 @@ form.addEventListener("submit", async (event) => {
     );
     return;
   }
+  if (couponInput.value.trim() && (!appliedCoupon || appliedCoupon.key !== couponKey())) {
+    showError("Appliquez votre code promo ou retirez-le avant de continuer.");
+    document.querySelector<HTMLDetailsElement>("#coupon-box")!.open = true;
+    couponInput.focus();
+    return;
+  }
   busy = true;
   next.disabled = true;
   previous.disabled = true;
   const oldLabel = next.textContent;
-  next.textContent = "Préparation du paiement…";
+  next.textContent = "Préparation de la commande…";
   error.hidden = true;
+  const lockedControls: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement)[] = [];
+  for (const control of form.querySelectorAll("input,select,textarea,button")) {
+    if ((control instanceof HTMLInputElement || control instanceof HTMLSelectElement ||
+        control instanceof HTMLTextAreaElement || control instanceof HTMLButtonElement) && !control.disabled)
+      lockedControls.push(control);
+  }
   try {
     const payload = new FormData(form);
+    if (!appliedCoupon) payload.delete("couponEmail");
     payload.set("attemptId", attemptId);
+    if (appliedCoupon) payload.set("couponExpectedTotal", String(appliedCoupon.totalCents));
+    lockedControls.forEach(control => { control.disabled = true; });
     const response = await fetch("/api/checkout", {
       method: "POST",
       body: payload,
@@ -346,6 +446,7 @@ form.addEventListener("submit", async (event) => {
       e instanceof Error ? e.message : "Une erreur est survenue. Réessayez.",
     );
     busy = false;
+    lockedControls.forEach(control => { control.disabled = false; });
     next.disabled = false;
     previous.disabled = false;
     next.textContent = oldLabel;
@@ -364,6 +465,7 @@ async function initialize() {
       available: boolean;
     };
     mode = data.mode;
+    document.querySelector<HTMLElement>("#coupon-box")!.hidden = mode === "demo" || !data.available;
     if (mode === "demo") {
       modeNotice.textContent =
         "Version de démonstration · Aucun paiement ni envoi de photos. Vous pouvez essayer toutes les étapes.";
