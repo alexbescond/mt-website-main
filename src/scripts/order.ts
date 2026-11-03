@@ -209,7 +209,7 @@ function review() {
 function updatePaymentLabel() {
   const price = formatPrice(chosenPack().totalCents);
   next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
-  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Montant avant code promo : ${price}, frais de port inclus en France métropolitaine. Aucun abonnement.`;
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Montant avant code promo : ${price}, frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. Aucun abonnement.`;
 }
 function go(index: number) {
   step = index;

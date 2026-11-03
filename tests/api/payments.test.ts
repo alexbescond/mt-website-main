@@ -92,7 +92,10 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
       expect(body.get("line_items[0][quantity]")).toBe(String(quantity));
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
       expect(body.get("success_url")).toBe(`${origin}/confirmation`);
-      expect(body.get("shipping_address_collection[allowed_countries][0]")).toBe("FR");
+      expect([...body.entries()].filter(([key]) => key.startsWith("shipping_address_collection[allowed_countries]")))
+        .toEqual(["FR", "BE", "LU", "CH"].map((country, index) => [
+          `shipping_address_collection[allowed_countries][${index}]`, country,
+        ]));
       expect(body.has("customer_email")).toBe(false);
       expect(body.get("allow_promotion_codes")).toBe("true");
       expect(body.get("payment_method_collection")).toBe("if_required");
@@ -304,10 +307,32 @@ it("saves the Stripe recipient, delivery address and email atomically before pre
 });
 
 it.each([
+  { country: "BE", postal_code: "1000", city: "Bruxelles" },
+  { country: "LU", postal_code: "1234", city: "Luxembourg" },
+  { country: "CH", postal_code: "1201", city: "Genève" },
+  { country: "CH", postal_code: "9470", city: "Buchs" },
+])("accepts delivery and schedules confirmation for supported countries: %j", async address => {
+  mockStripe();
+  const form = payload();
+  const id = String(form.get("attemptId"));
+  await api(request(form), bindings);
+  expect((await webhook(id, "cs_test_fixture", {
+    shipping: { name: "Alex", address: { line1: "1 rue du Test", ...address } },
+  })).status).toBe(200);
+  expect(await env.DB.prepare("SELECT status,delivery_status,country,postal_code,city FROM orders WHERE id=?").bind(id).first())
+    .toEqual({ status: "paid", delivery_status: "ready", ...address });
+  expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM notification_outbox WHERE order_id=?").bind(id).first())?.n).toBe(1);
+});
+
+it.each([
   null,
   { name: "Alex", address: { country: "FR" } },
   { name: "Alex", address: { line1: "1 rue du Test", postal_code: "97400", city: "Saint-Denis", country: "FR" } },
-  { name: "Alex", address: { line1: "1 rue du Test", postal_code: "1000", city: "Bruxelles", country: "BE" } },
+  { name: "Alex", address: { line1: "1 rue du Test", postal_code: "98000", city: "Monaco", country: "FR" } },
+  { name: "Alex", address: { line1: "1 rue du Test", postal_code: "10115", city: "Berlin", country: "DE" } },
+  ...["BE", "LU", "CH"].flatMap(country => ["", "123", "12345", "ABCD"].map(postal_code => (
+    { name: "Alex", address: { line1: "1 rue du Test", postal_code, city: "Test", country } }
+  ))),
 ])("records payment but holds unsupported or missing Stripe delivery details for review: %j", async shipping => {
   mockStripe();
   const form = payload();

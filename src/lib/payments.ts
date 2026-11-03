@@ -8,6 +8,8 @@ import {
   validateOrder,
   validatePhoto,
 } from "./validation";
+const SHIPPING_COUNTRIES = ["FR", "BE", "LU", "CH"] as const;
+
 export function stripeClient(env: AppEnv) {
   return new Stripe(env.STRIPE_SECRET_KEY!, {
     httpClient: Stripe.createFetchHttpClient(),
@@ -183,9 +185,9 @@ export async function createCheckout(request: Request, env: AppEnv) {
       allowed_payment_method_types: ["card"],
       allow_promotion_codes: true,
       payment_method_collection: "if_required",
-      shipping_address_collection: { allowed_countries: ["FR"] },
+      shipping_address_collection: { allowed_countries: [...SHIPPING_COUNTRIES] },
       custom_text: {
-        shipping_address: { message: "Livraison en France métropolitaine uniquement (hors codes postaux 97 et 98). Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
+        shipping_address: { message: "Livraison en France métropolitaine (hors codes postaux 97 et 98), Belgique, Luxembourg et Suisse uniquement. Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
       },
       client_reference_id: id,
       metadata: { order_id: id },
@@ -198,7 +200,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
             product_data: {
               name: `Carte postale personnalisée — ${companions[data.companion].character}`,
               description:
-                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine`,
+                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse`,
             },
           },
         },
@@ -373,8 +375,10 @@ function stripeDelivery(session: Stripe.Checkout.Session) {
   };
   const ready = !!delivery.name && !!delivery.address && !!delivery.city &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery.email) &&
-    delivery.country === "FR" && /^\d{5}$/.test(delivery.postalCode) &&
-    !/^(97|98)/.test(delivery.postalCode) &&
+    SHIPPING_COUNTRIES.some(country => country === delivery.country) &&
+    (delivery.country === "FR"
+      ? /^\d{5}$/.test(delivery.postalCode) && !/^(97|98)/.test(delivery.postalCode)
+      : /^\d{4}$/.test(delivery.postalCode)) &&
     !Object.values(delivery).some(value => /[\u0000-\u001f\u007f]/.test(value));
   // A paid order must remain recorded even if delivery needs a manual review.
   return { ...delivery, ready };
