@@ -26,7 +26,7 @@ npm run dev
 
 `npm run preview` compile puis sert le Worker sur http://localhost:8787 en mode `test` ; renseigner les secrets sandbox dans `.dev.vars` pour Stripe. Pour une démo sans secrets, exécuter `npm run build` puis `npx wrangler dev --config dist/server/wrangler.json --port 8787 --var CHECKOUT_MODE:demo` : les photos restent dans le navigateur et aucune commande n’est créée.
 
-Les releases passent par GitHub : une PR fusionnée dans `main` déploie le staging après les tests ; une PR `main` → `prod` fusionnée avec un commit de merge déploie la production après les tests. Les environnements GitHub sont séparés et leurs jetons Cloudflare doivent être configurés avant la première release automatique. Voir [le circuit de release](DEPLOY.md#circuit-de-release). Les commandes locales `npm run deploy:staging` et `npm run deploy:www` restent disponibles pour le dépannage.
+Les releases passent par GitHub : une PR fusionnée dans `main` déploie le staging après les tests ; une PR `main` → `prod` fusionnée avec un commit de merge déploie la production après les tests. Les environnements GitHub sont séparés et disposent chacun du secret de déploiement Cloudflare. Voir [le circuit de release](DEPLOY.md#circuit-de-release). Les commandes locales `npm run deploy:staging` et `npm run deploy:www` restent disponibles pour le dépannage.
 
 ## Ce qui est implémenté
 

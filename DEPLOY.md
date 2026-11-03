@@ -104,12 +104,14 @@ Le contrôle de déploiement vérifie la présence des noms de secrets, pas leur
 
 `.github/workflows/e2e.yml` lance les contrôles sur les PR vers `main`/`prod`, les push sur ces branches et les déclenchements manuels. Le job `deploy` attend leur réussite et sélectionne l’environnement d’après la branche, sans entrée utilisateur permettant de changer la cible. La variable historique `CLOUDFLARE_DEPLOY_ENABLED` n’est plus utilisée. Un secret manquant fait échouer explicitement le job avant toute migration.
 
-Les environnements GitHub sont créés et limités à leur branche : `staging` autorise uniquement `main`, `production` uniquement `prod`. Chacun doit contenir :
+Les environnements GitHub sont créés et limités à leur branche : `staging` autorise uniquement `main`, `production` uniquement `prod`. La présence des deux paramètres suivants a été vérifiée dans chacun le 3 novembre 2026 :
 
-- le **secret** `CLOUDFLARE_API_TOKEN`, propre à l’environnement et limité aux ressources nécessaires pour déployer le Worker et appliquer les migrations D1 ;
+- le **secret** `CLOUDFLARE_API_TOKEN`, pour déployer le Worker et appliquer les migrations D1 ;
 - la **variable** `CLOUDFLARE_ACCOUNT_ID`, déjà configurée à `2956aa8b799d46de715a248f6ef2207d`.
 
-Les clés Stripe, Resend et les mots de passe restent dans les secrets du Worker, sans copie dans GitHub. Ne pas utiliser un jeton OAuth de connexion Wrangler comme secret CI : créer un jeton API de déploiement dédié. Les jetons CI restent à installer avant le premier merge déclenchant une release automatique.
+Les clés Stripe, Resend et les mots de passe restent dans les secrets du Worker, sans copie dans GitHub. Ne pas utiliser un jeton OAuth de connexion Wrangler comme secret CI : utiliser un jeton API de déploiement dédié à chaque environnement. Le périmètre préparé est `Individual Workers Editor` sur le Worker correspondant et `D1 Write` sur le compte ; ce dernier autorise toutes les bases D1 du compte, même si le workflow contrôle la base cible. Le jeton production ajoute `Workers Routes Write` et `Zone Read` uniquement sur `les-aventures-de-doudou-tetine.com`. Les jetons ont été préparés avec une expiration d’un an ; prévoir leur renouvellement avant échéance.
+
+GitHub ne permet pas de relire la valeur des secrets : leur présence est vérifiée, mais leurs droits seront validés lors du premier déploiement automatique après fusion de la PR de configuration. Aucun déploiement GitHub n’a encore été effectué à ce stade.
 
 Les releases sont sérialisées par branche/environnement. Un nouveau push n’interrompt pas un déploiement ni une migration en cours ; seules les anciennes exécutions de tests de PR sont annulées. Chaque release reconstruit le bon environnement et contrôle le Worker, l’origine et les bindings avant les migrations et la publication.
 
