@@ -34,10 +34,10 @@ import "../styles/order.css";
         <span>1</span> Ses cartes
       </li>
       <li>
-        <span>2</span> La livraison
+        <span>2</span> Le récapitulatif
       </li>
       <li>
-        <span>3</span> Le récapitulatif
+        <span>3</span> Adresse et paiement · Stripe
       </li>
     </ol>
     <div class="order-grid">
@@ -81,9 +81,23 @@ import "../styles/order.css";
             <CardPacks selectable />
             <p class="form-intro">Un paiement unique. Frais de port inclus en France métropolitaine. Aucun abonnement.</p>
           </fieldset>
+          <fieldset id="delivery-options" class="delivery-field">
+            <legend>À quel rythme recevoir ses cartes ?</legend>
+            <div class="delivery-options">
+              <label class="delivery-option">
+                <input type="radio" name="deliveryMode" value="weekly" checked required />
+                <span><strong>Une carte tous les 7 jours</strong><small>Un petit rendez-vous chaque semaine, à partir du premier envoi.</small><b id="weekly-price"></b></span>
+              </label>
+              <label class="delivery-option">
+                <input type="radio" name="deliveryMode" value="together" required />
+                <span><strong>Toutes les cartes en une fois</strong><small>Un seul envoi, puis vous les découvrez à votre rythme.</small><b>−{formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte</b><small id="together-price"></small></span>
+              </label>
+            </div>
+          </fieldset>
+          <p id="single-delivery-note" class="form-intro">Une seule carte, un seul envoi. La remise pour envoi groupé est disponible à partir de 2 cartes.</p>
           <fieldset class="destination-field">
             <legend>Ses aventures, dans l’ordre des envois</legend>
-            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Choisissez le rythme des envois à l’étape livraison.</p>
+            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Choisissez le rythme des envois ci-dessus.</p>
             {[0, 1, 2, 3, 4].map((index) => (
               <label class="field adventure-field" data-card-index={index} hidden={index > 0}>
                 <span data-adventure-label={index}>{index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index)}`}</span>
@@ -159,113 +173,6 @@ import "../styles/order.css";
         </section>
         <section data-step="1" class="form-panel" hidden>
           <h2 tabindex="-1">
-            À quelle adresse
-            <br />
-            envoyer son aventure ?
-          </h2>
-          <p class="form-intro">
-            Choisissez comment recevoir ses cartes, puis indiquez votre adresse.
-          </p>
-          <fieldset id="delivery-options" class="delivery-field">
-            <legend>À quel rythme recevoir ses cartes ?</legend>
-            <div class="delivery-options">
-              <label class="delivery-option">
-                <input type="radio" name="deliveryMode" value="weekly" checked required />
-                <span><strong>Une carte tous les 7 jours</strong><small>Un petit rendez-vous chaque semaine, à partir du premier envoi.</small><b id="weekly-price"></b></span>
-              </label>
-              <label class="delivery-option">
-                <input type="radio" name="deliveryMode" value="together" required />
-                <span><strong>Toutes les cartes en une fois</strong><small>Un seul envoi, puis vous les découvrez à votre rythme.</small><b>−{formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte</b><small id="together-price"></small></span>
-              </label>
-            </div>
-          </fieldset>
-          <p id="single-delivery-note" class="form-intro">Une seule carte, un seul envoi. La remise pour envoi groupé est disponible à partir de 2 cartes.</p>
-          <div class="field-row">
-            <label class="field">
-              Votre prénom <span class="required">*</span>
-              <input
-                name="firstName"
-                autocomplete="given-name"
-                maxlength="80"
-                required
-              />
-            </label>
-            <label class="field">
-              Votre nom <span class="required">*</span>
-              <input
-                name="lastName"
-                autocomplete="family-name"
-                maxlength="80"
-                required
-              />
-            </label>
-          </div>
-          <label class="field">
-            Votre adresse e-mail <span class="required">*</span>
-            <input
-              name="email"
-              type="email"
-              autocomplete="email"
-              maxlength="254"
-              required
-              placeholder="vous@exemple.fr"
-            />
-            <small>Pour associer votre paiement à votre commande.</small>
-          </label>
-          <label class="field">
-            Adresse de livraison <span class="required">*</span>
-            <input
-              name="address"
-              autocomplete="address-line1"
-              maxlength="150"
-              required
-              placeholder="Numéro et nom de la rue"
-            />
-          </label>
-          <label class="field">
-            Complément d’adresse <span class="optional">facultatif</span>
-            <input
-              name="addressExtra"
-              autocomplete="address-line2"
-              maxlength="150"
-              placeholder="Appartement, bâtiment, étage…"
-            />
-          </label>
-          <div class="field-row">
-            <label class="field">
-              Code postal <span class="required">*</span>
-              <input
-                name="postalCode"
-                autocomplete="postal-code"
-                inputmode="numeric"
-                pattern="[0-9]{5}"
-                maxlength="5"
-                required
-              />
-            </label>
-            <label class="field">
-              Ville <span class="required">*</span>
-              <input
-                name="city"
-                autocomplete="address-level2"
-                maxlength="100"
-                required
-              />
-            </label>
-          </div>
-          <label class="field">
-            Pays
-            <select name="country" autocomplete="country">
-              <option value="FR">France métropolitaine</option>
-            </select>
-            <small>
-              Cette première version propose la livraison en France
-              métropolitaine.
-            </small>
-          </label>
-        </section>
-        <section data-step="2" class="form-panel" hidden>
-          <h2 tabindex="-1">
             Tout est prêt
             <br />
             pour le grand départ.
@@ -290,13 +197,10 @@ import "../styles/order.css";
           <div class="review-section">
             <div>
               <h3>La livraison</h3>
-              <button type="button" class="edit-button" data-edit="1">
-                Modifier
-              </button>
             </div>
             <p id="review-delivery"></p>
-            <p id="review-address"></p>
-            <p id="review-email"></p>
+            <p>Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.</p>
+            <p>Frais de port inclus en France métropolitaine. La même adresse sera utilisée pour toutes les cartes.</p>
           </div>
           <label class="checkbox-field">
             <input type="checkbox" name="termsConsent" required />

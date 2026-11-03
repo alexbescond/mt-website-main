@@ -31,7 +31,7 @@ Les releases passent par GitHub : une PR fusionnée dans `main` déploie le stag
 ## Ce qui est implémenté
 
 - Accueil adaptatif, catalogue `/aventures`, page `/notre-histoire`, aperçus recto-verso, FAQ, menu mobile, page 404 et informations du projet.
-- Formulaire en trois étapes avec choix du compagnon, nombre de cartes, aventures par menu déroulant, planning des envois, surnom, prénom de l’enfant, photos et aperçu, consentements, nom/prénom du parent, e-mail, adresse et récapitulatif modifiable.
+- Personnalisation et récapitulatif modifiable sur le site : compagnon, nombre de cartes, aventures, surnom, prénom de l’enfant, photo et consentement. Stripe Checkout recueille ensuite le nom du destinataire, l’e-mail et l’adresse de livraison avec autocomplétion, puis le paiement. La démonstration s’arrête avant Stripe sans demander de coordonnées.
 - Worker Astro : validation serveur, limites de taille et de fréquence, détection JPG/PNG/WebP, stockage privé R2, commandes D1, Stripe Checkout et webhook signé.
 - Prix fixé côté serveur ; retries idempotents ; paiement confirmé uniquement par webhook ; confirmation privée avec cookie HttpOnly.
 - Nettoyage quotidien des commandes abandonnées après 7 jours et des photos après 90 jours. Le traitement est limité à 100 commandes par exécution ; surveiller la volumétrie avant montée en charge.
@@ -80,7 +80,9 @@ Voir [DEPLOY.md](DEPLOY.md) pour le déploiement, Stripe et le traitement d’un
 
 La migration `0003_postcards.sql` reconstruit la table `orders` pour retirer la restriction historique aux deux aventures de livres, tout en conservant les commandes, montants, références Stripe, clés photo et index existants. Les anciennes lignes restent `product_type='book'`. Les nouvelles sont `postcards`, avec `card_quantity`, `unit_price_cents`, `card_adventures` (tableau JSON ordonné) et `send_interval_days=7`. La colonne historique `book` conserve la première aventure, uniquement pour compatibilité ; `card_adventures` est la source du programme complet.
 
-Le nom `pacifierPhoto` et la clé R2 `pacifier` sont conservés pour les deux types de compagnons. Ni prénom, surnom ni photo ne sont transmis à Stripe. Le serveur impose la quantité de 1 à 5, le nombre exact d’aventures et le tarif correspondant ; le webhook vérifie le total enregistré. Les expéditions sont espacées de 7 jours après le premier départ par défaut, ou regroupées selon le choix du client, sans garantir des dates de réception identiques aux dates d’expédition.
+La migration `0006_stripe_delivery.sql` ajoute `recipient_name` et `delivery_status`. Le webhook conserve le nom complet reçu de Stripe sans le découper artificiellement ; les anciennes commandes conservent leurs champs prénom/nom et leur adresse. Les coordonnées incomplètes ou hors France métropolitaine placent la livraison en vérification sans perdre la trace du paiement. Voir [le fonctionnement Stripe](DEPLOY.md#stripe-en-test).
+
+Le nom `pacifierPhoto` et la clé R2 `pacifier` sont conservés pour les deux types de compagnons. Ni prénom de l’enfant, surnom du compagnon ni photo ne sont transmis à Stripe. Le serveur impose la quantité de 1 à 5, le nombre exact d’aventures et le tarif correspondant ; le webhook vérifie le total enregistré. Les expéditions sont espacées de 7 jours après le premier départ par défaut, ou regroupées selon le choix du client, sans garantir des dates de réception identiques aux dates d’expédition.
 
 Les fichiers de `conductor-handoff/` sont une archive de l’ancienne refonte livres et ne décrivent plus l’offre actuelle. La configuration et les environnements actuels sont décrits dans [DEPLOY.md](DEPLOY.md).
 

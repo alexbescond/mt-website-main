@@ -74,6 +74,14 @@ Cette route, déclarée dans `env.production`, appartient à `mt-main-production
 
 ## Stripe en test
 
+Le parcours collecte uniquement la personnalisation sur le site, puis ouvre Stripe Checkout pour le nom du destinataire, l’e-mail, l’adresse et le paiement. `shipping_address_collection.allowed_countries` est limité à `FR` ; Stripe fournit l’aide à la saisie sans clé Google à gérer sur le site. La démonstration s’arrête au récapitulatif sans collecter de coordonnées ni ouvrir Stripe.
+
+Appliquer la migration **`0006_stripe_delivery.sql`** avant de déployer cette version. Elle ajoute le nom complet du destinataire et l’état de livraison sans modifier les adresses historiques. Le webhook signé enregistre `collected_information.shipping_details` et `customer_details.email` dans le même lot atomique que le paiement. L’adresse de facturation n’est jamais utilisée à la place de l’adresse de livraison ; les événements répétés ne remplacent pas les coordonnées déjà enregistrées.
+
+Checkout hébergé limite les pays mais ne permet pas notre filtre personnalisé sur les codes postaux avant paiement. Le texte Stripe rappelle la livraison en France métropolitaine. Une adresse incomplète, hors zone (`97`/`98`, autre pays) ou sans e-mail exploitable conserve le paiement enregistré avec `delivery_status=needs_review`. Elle reste visible dans l’atelier, avec préparation et planning bloqués ; le client voit aussi la vérification en attente. La confirmation automatique de préparation n’est pas envoyée. L’équipe doit vérifier dans Stripe, contacter le client et traiter une correction ou un remboursement manuellement. Ne positionner `delivery_status=ready` qu’après correction vérifiée des coordonnées en base ; le simple rejeu d’un webhook ne lève pas ce blocage. Aucun remboursement automatique n’est effectué.
+
+Pour valider en sandbox après déploiement : parcourir les deux étapes du site, saisir une adresse française dans Stripe, terminer avec une carte de test, puis vérifier le nom complet, l’e-mail et l’adresse dans l’atelier. Les tests automatiques simulent Stripe et couvrent la signature, le stockage, les reprises, les anciennes commandes et les adresses à vérifier. [Documentation de collecte Stripe](https://docs.stripe.com/payments/collect-addresses?ui=full-page).
+
 1. Utiliser le sandbox **mt-main-staging** (`acct_1UXgG5LOJ3UTEBt1`), rattaché au compte distinct **mt-main-production** (`acct_1UXgF6L9j58VN417`). Ne pas utiliser le compte Photo Print d’un autre projet. L’activation des paiements réels du nouveau compte reste à faire avant une ouverture publique.
 2. Ajouter les secrets du Worker avec les invites sécurisées (jamais dans Git ou dans le chat) :
 

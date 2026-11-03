@@ -6,6 +6,7 @@ import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import base from "../../migrations/0001_orders.sql?raw";
 import companions from "../../migrations/0002_companions.sql?raw";
 import postcards from "../../migrations/0003_postcards.sql?raw";
+import stripeDelivery from "../../migrations/0006_stripe_delivery.sql?raw";
 import tracking from "../../migrations/0004_tracking.sql?raw";
 import { api } from "../../src/lib/api";
 import { paidOrderStatements } from "../../src/lib/tracking";
@@ -19,7 +20,7 @@ const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false"
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) } };
 beforeEach(async () => {
-  await env.DB.batch([base, companions, postcards, tracking, delivery].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await env.DB.batch([base, companions, postcards, tracking, delivery, stripeDelivery].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
 });
 afterEach(async () => { vi.restoreAllMocks(); await reset(); });
 function call(path: string, body?: unknown, cookie?: string, custom = bindings, requestOrigin = origin) {
@@ -53,6 +54,20 @@ it("creates one itinerary and one confirmation despite retries, and keeps prepar
   expect((await env.DB.prepare("SELECT count(*) AS n FROM order_cards").first())?.n).toBe(3);
   expect((await env.DB.prepare("SELECT count(*) AS n FROM notification_outbox").first())?.n).toBe(1);
   expect((await env.DB.prepare("SELECT state FROM order_cards WHERE position=1").first())?.state).toBe("preparing");
+});
+it("shows the full Stripe recipient in admin search and blocks preparation for addresses needing review", async () => {
+  const id = await paidOrder();
+  const cookie = await admin();
+  await env.DB.prepare("UPDATE orders SET first_name='',last_name='',recipient_name='Alex Marie Dupont',delivery_status='needs_review' WHERE id=?").bind(id).run();
+  const response = await call("/api/admin/orders?search=Dupont", undefined, cookie);
+  const body = await response.json() as { orders: { parent: string; address: string; deliveryStatus: string }[] };
+  expect(body.orders).toHaveLength(1);
+  expect(body.orders[0]).toMatchObject({ parent: "Alex Marie Dupont", deliveryStatus: "needs_review" });
+  expect(body.orders[0].address).toContain("Alex Marie Dupont\n12 rue des Nuages");
+  expect((await call(`/api/admin/orders/${id}/cards/1`, { state: "preparing", version: 0 }, cookie)).status).toBe(409);
+  expect((await call(`/api/admin/orders/${id}/schedule`, { date: parisDate(), version: 0 }, cookie)).status).toBe(409);
+  expect((await env.DB.prepare("SELECT state,planned_date FROM order_cards WHERE order_id=? AND position=1").bind(id).first()))
+    .toEqual({ state: "queued", planned_date: null });
 });
 it("requires authentication, rejects cross-origin mutations, and invalidates logged-out and rotated admin sessions", async () => {
   const id = await paidOrder();

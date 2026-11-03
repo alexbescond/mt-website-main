@@ -148,7 +148,7 @@ function summary() {
   document.querySelector("#summary-discount")!.textContent = `−${formatPrice(pack.discountCents)}`;
   document.querySelector("#summary-total")!.textContent = formatPrice(pack.totalCents);
   document.querySelector("#summary-cadence")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
-  if (step === 2) updatePaymentLabel();
+  if (step === 1) updatePaymentLabel();
 }
 function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
   const key = `${companion}:${chosenDelivery()}:${itinerary.join(",")}`;
@@ -197,9 +197,6 @@ function review() {
     `${companions[chosenCompanion()].label}${field("companionName").value.trim() ? ` · ${field("companionName").value.trim()}` : ""}`;
   document.querySelector("#review-notes")!.textContent = field("notes").value;
   document.querySelector("#review-delivery")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
-  document.querySelector("#review-address")!.textContent =
-    `${field("firstName").value} ${field("lastName").value}\n${field("address").value}\n${field("addressExtra").value ? field("addressExtra").value + "\n" : ""}${field("postalCode").value} ${field("city").value}\nFrance métropolitaine`;
-  document.querySelector("#review-email")!.textContent = field("email").value;
   const photos = document.querySelector("#review-photos")!;
   photos.replaceChildren();
   if (photoUrl) {
@@ -211,8 +208,8 @@ function review() {
 }
 function updatePaymentLabel() {
   const price = formatPrice(chosenPack().totalCents);
-  next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester le paiement Stripe · ${price} →` : `Payer ${price} avec Stripe →`;
-  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration ne déclenche aucun paiement ni envoi postal." : `Paiement unique de ${price}. Aucun abonnement. ${deliveryLabel(chosenPack().quantity, chosenDelivery())}.`;
+  next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Paiement unique de ${price}, frais de port inclus en France métropolitaine. Aucun abonnement.`;
 }
 function go(index: number) {
   step = index;
@@ -223,31 +220,29 @@ function go(index: number) {
   });
   previous.hidden = index === 0;
   error.hidden = true;
-  if (index === 2) updatePaymentLabel();
+  if (index === 1) updatePaymentLabel();
   else next.textContent = "Continuer →";
-  if (index === 2) review();
+  if (index === 1) review();
   panels[index]
     .querySelector<HTMLElement>("h2")!
     .focus({ preventScroll: true });
   panels[index].scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function validatePanel(index: number) {
+  panels[index].dataset.validated = "true";
   const controls = panels[index].querySelectorAll("input,textarea,select");
   for (const input of controls) {
     if (
       (input instanceof HTMLInputElement ||
         input instanceof HTMLSelectElement ||
         input instanceof HTMLTextAreaElement) &&
-      !input.reportValidity()
-    )
+      !input.validity.valid
+    ) {
+      // Final review may uncover an invalid field in a hidden step.
+      if (panels[index].hidden) go(index);
+      input.reportValidity();
       return false;
-  }
-  if (index === 1 && /^(97|98)/.test(field("postalCode").value)) {
-    showError(
-      "La livraison est actuellement proposée en France métropolitaine uniquement.",
-    );
-    field("postalCode").focus();
-    return false;
+    }
   }
   return true;
 }
@@ -305,16 +300,11 @@ document
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (busy || !validatePanel(step)) return;
-  if (step < 2) {
+  if (step < 1) {
     go(step + 1);
     return;
   }
-  for (let i = 0; i < 2; i++) {
-    if (!validatePanel(i)) {
-      go(i);
-      return;
-    }
-  }
+  if (!validatePanel(0)) return;
   if (mode === "demo") {
     location.assign("/confirmation?demo=1");
     return;

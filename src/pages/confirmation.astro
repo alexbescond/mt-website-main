@@ -53,6 +53,7 @@ import Icon from "../components/Icon.astro";
         const data = (await response.json()) as {
           status?: string;
           reference?: string;
+          deliveryStatus?: string;
         };
         if (!response.ok) throw new Error("Commande introuvable");
         if (data.status === "paid") {
@@ -60,6 +61,10 @@ import Icon from "../components/Icon.astro";
           title.textContent = "Le grand voyage peut commencer.";
           copy.textContent =
             "Votre paiement est confirmé. Votre commande est enregistrée pour la préparation de vos cartes postales. Elles seront expédiées selon le mode d’envoi choisi lors de votre commande.";
+          if (data.deliveryStatus === "needs_review") {
+            title.textContent = "Votre paiement est confirmé.";
+            copy.textContent = "Vos coordonnées de livraison nécessitent une vérification avant la préparation. Votre commande est bien enregistrée : ne repassez pas commande. Conservez votre reçu Stripe et votre référence.";
+          }
           document.querySelector("#order-reference")!.textContent =
             `Référence : ${data.reference}`;
           return;

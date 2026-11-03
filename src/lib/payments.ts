@@ -42,6 +42,7 @@ type StoredOrder = {
   pacifier_key: string | null;
   child_key: string | null;
   photos_deleted_at: number | null;
+  delivery_status: "pending" | "ready" | "needs_review";
 };
 function checkoutResponse(
   order: Pick<StoredOrder, "access_token">,
@@ -119,8 +120,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
   // Record the intent first: interrupted uploads are covered by the retention task.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode,delivery_status)
+  VALUES (?,?,?,?,?,'','','','','','','',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`,
   )
     .bind(
       id,
@@ -128,13 +129,6 @@ export async function createCheckout(request: Request, env: AppEnv) {
       token,
       data.cardAdventures[0],
       data.childName,
-      data.firstName,
-      data.lastName,
-      data.email,
-      data.address,
-      data.addressExtra,
-      data.postalCode,
-      data.city,
       data.notes,
       pacifierKey,
       null,
@@ -172,7 +166,10 @@ export async function createCheckout(request: Request, env: AppEnv) {
       mode: "payment",
       locale: "fr",
       allowed_payment_method_types: ["card"],
-      customer_email: data.email,
+      shipping_address_collection: { allowed_countries: ["FR"] },
+      custom_text: {
+        shipping_address: { message: "Livraison en France métropolitaine uniquement (hors codes postaux 97 et 98). Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
+      },
       client_reference_id: id,
       metadata: { order_id: id },
       line_items: [
@@ -252,11 +249,16 @@ export async function stripeWebhook(request: Request, env: AppEnv) {
       session.currency !== order.currency)
   )
     throw new InputError("Montant incohérent.", 409);
+  const delivery = stripeDelivery(session);
   // A single atomic batch makes repeated and out-of-order deliveries safe.
   await env.DB.batch([
     env.DB.prepare(
       "INSERT OR IGNORE INTO stripe_events (id,order_id,type,received_at) VALUES (?,?,?,?)",
     ).bind(event.id, id, event.type, Date.now()),
+    ...(!expired ? [env.DB.prepare(
+      `UPDATE orders SET recipient_name=?,email=?,address=?,address_extra=?,postal_code=?,city=?,country=?,delivery_status=?
+       WHERE id=? AND delivery_status='pending' AND status!='paid'`,
+    ).bind(delivery.name, delivery.email, delivery.address, delivery.extra, delivery.postalCode, delivery.city, delivery.country, delivery.ready ? "ready" : "needs_review", id)] : []),
     expired
       ? env.DB.prepare(
           "UPDATE orders SET status = 'expired' WHERE id = ? AND status = 'pending'",
@@ -278,15 +280,39 @@ export async function orderStatus(request: Request, env: AppEnv) {
   if (!token || !/^[a-f0-9-]{72}$/.test(token))
     throw new InputError("Commande introuvable.", 404);
   const order = await env.DB.prepare(
-    "SELECT id,status FROM orders WHERE access_token = ?",
+    "SELECT id,status,delivery_status FROM orders WHERE access_token = ?",
   )
     .bind(token)
-    .first<{ id: string; status: string }>();
+    .first<{ id: string; status: string; delivery_status: string }>();
   if (!order) throw new InputError("Commande introuvable.", 404);
   return Response.json({
     status: order.status,
     reference: order.id.slice(0, 8).toUpperCase(),
+    deliveryStatus: order.delivery_status,
   });
+}
+
+function stripeDelivery(session: Stripe.Checkout.Session) {
+  // The pinned Stripe API exposes shipping under collected_information.
+  // Never substitute the cardholder's billing address for the delivery address.
+  const shipping = session.collected_information?.shipping_details;
+  const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
+  const delivery = {
+    name: text(shipping?.name),
+    email: text(session.customer_details?.email),
+    address: text(shipping?.address?.line1),
+    extra: text(shipping?.address?.line2),
+    postalCode: text(shipping?.address?.postal_code),
+    city: text(shipping?.address?.city),
+    country: text(shipping?.address?.country),
+  };
+  const ready = !!delivery.name && !!delivery.address && !!delivery.city &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery.email) &&
+    delivery.country === "FR" && /^\d{5}$/.test(delivery.postalCode) &&
+    !/^(97|98)/.test(delivery.postalCode) &&
+    !Object.values(delivery).some(value => /[\u0000-\u001f\u007f]/.test(value));
+  // A paid order must remain recorded even if delivery needs a manual review.
+  return { ...delivery, ready };
 }
 export async function cleanupOrders(env: AppEnv) {
   // The public demo has no photo storage and never accepts an order.
