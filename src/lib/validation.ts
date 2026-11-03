@@ -56,6 +56,8 @@ export function validateOrder(data: FormData) {
   const cardAdventures = data.getAll("adventure");
   if (cardAdventures.length !== quantity || !cardAdventures.every(isAdventureId))
     throw new InputError("Choisissez une aventure pour chaque carte.");
+  if (new Set(cardAdventures).size !== cardAdventures.length)
+    throw new InputError("Choisissez une aventure différente pour chaque carte.");
   const pack = getCardPack(quantity);
   const companion = value(data, "companion", 10);
   if (!isCompanionId(companion))

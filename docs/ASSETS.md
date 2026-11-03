@@ -31,8 +31,12 @@ Prompt : illustration jeunesse 3D chaleureuse, tactile et cinématographique ; d
 
 ## Aperçus des cartes postales
 
-Les composants `Postcard.astro` et `PostcardPreview.astro` présentent les illustrations existantes dans une maquette HTML/CSS de carte recto-verso, avec papier, petit mot fictif, zone destinataire et timbre décoratif. La maquette elle-même ne nécessite pas de nouvel asset raster. Les scènes safari, bateau, pelleteuse, circuit et espace utilisent un visuel d’ambiance explicitement signalé dans le formulaire ; leurs illustrations personnalisées restent à produire. Les illustrations d’exemple ne sont pas remplacées par la photo téléversée : celle-ci sert de référence pour la fabrication ultérieure.
+Les composants `Postcard.astro` et `PostcardPreview.astro` présentent les illustrations existantes dans une maquette HTML/CSS de carte recto-verso, avec papier, petit mot fictif, zone destinataire et timbre décoratif. La maquette elle-même ne nécessite pas de nouvel asset raster. Les onze aventures ont chacune une illustration d’exemple pour Tétine et une pour Doudou. Les illustrations d’exemple ne sont pas remplacées par la photo téléversée : celle-ci sert de référence pour la fabrication ultérieure.
 
 ## Variantes Doudou
 
-Cinq scènes Doudou (transat, ski, plongée, avion et enregistrement) sont disponibles dans `public/images/doudou-*.webp`. Le formulaire choisit l’image et sa légende selon le compagnon et la première aventure. Pour les scènes sans illustration dédiée, Doudou utilise le transat comme ambiance, explicitement signalée. Les prompts et les fichiers sont documentés dans [DOUDOU_IMAGES.md](DOUDOU_IMAGES.md).
+Cinq scènes Doudou (transat, ski, plongée, avion et enregistrement) sont disponibles dans `public/images/doudou-*.webp`. Le formulaire affiche une illustration par carte choisie, selon le compagnon et chaque aventure, dans l’ordre des envois. Les prompts et les fichiers sont documentés dans [DOUDOU_IMAGES.md](DOUDOU_IMAGES.md).
+
+## Safari, bateau pirate, pelleteuse, circuit, espace et Noël
+
+Les douze nouveaux fichiers `public/images/{tetine,doudou}-{safari,bateau,pelleteuse,circuit,espace,noel}.webp` sont documentés avec leurs prompts dans [ADVENTURE_IMAGES.md](ADVENTURE_IMAGES.md). Les variantes Tétine et Doudou apparaissent dans le catalogue, les menus de commande et le récapitulatif visuel du lot.

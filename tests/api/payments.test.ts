@@ -422,7 +422,7 @@ it("rejects child photos without storing a file, creating an order or contacting
 it.each([[1, 700, 700], [2, 600, 1200], [3, 550, 1650], [4, 525, 2100], [5, 500, 2500]])("prices %i postcards on the server and persists the weekly itinerary", async (quantity, unit, total) => {
   const fetch = mockStripe("cs_test_pack", unit, quantity);
   const form = payload();
-  const choices = ["safari", "plongee", "avion", "pelleteuse", "circuit"].slice(0, quantity);
+  const choices = ["safari", "bateau", "pelleteuse", "circuit", "noel"].slice(0, quantity);
   form.set("quantity", String(quantity));
   form.set("amount", "1");
   form.set("unitPriceCents", "1");
@@ -463,6 +463,22 @@ it("requires exactly one supported adventure per card and protects itinerary ret
   form.append("adventure", "avion");
   expect((await api(request(form), bindings)).status).toBe(409);
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it.each([2, 5])("rejects a duplicate adventure in a %i-card order before storage or payment", async (quantity) => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("quantity", String(quantity));
+  const choices = ["safari", "bateau", "circuit", "espace", "noel"].slice(0, quantity);
+  choices[quantity - 1] = choices[0];
+  form.delete("adventure");
+  choices.forEach(choice => form.append("adventure", choice));
+  const response = await api(request(form), bindings);
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: "Choisissez une aventure différente pour chaque carte." });
+  expect((await bindings.PHOTOS!.list()).objects).toEqual([]);
+  expect((await env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first())?.count).toBe(0);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 it("preserves historical book orders and webhook references during the postcard migration", async () => {

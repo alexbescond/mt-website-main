@@ -174,7 +174,7 @@ test("switching companion and adventure updates the illustration and caption", a
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/personnaliser");
   const image = page.locator("#summary-image");
-  const scenes = { tropiques: "transat", ski: "ski", plongee: "plongee", avion: "avion", aeroport: "enregistrement" };
+  const scenes = { tropiques: "transat", ski: "ski", plongee: "plongee", avion: "avion", aeroport: "enregistrement", safari: "safari", bateau: "bateau", pelleteuse: "pelleteuse", circuit: "circuit", espace: "espace", noel: "noel" };
   for (const [adventure, scene] of Object.entries(scenes)) {
     await page.locator("#adventure-1").selectOption(adventure);
     for (const companion of ["doudou", "tetine"]) {
@@ -185,10 +185,6 @@ test("switching companion and adventure updates the illustration and caption", a
       await expect.poll(() => image.evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
     }
   }
-  await page.locator("#adventure-1").selectOption("safari");
-  await page.locator('[name="companion"][value="doudou"]').check();
-  await expect(image).toHaveAttribute("src", "/images/doudou-transat.webp");
-  await expect(page.locator("#summary-caption")).toContainText("SCÈNE À PERSONNALISER");
   expect(errors).toEqual([]);
 });
 test("catalogue, story and mobile navigation are reachable", async ({
@@ -211,6 +207,8 @@ test("catalogue, story and mobile navigation are reachable", async ({
   await expect(page).toHaveURL(/aventures$/);
   await expect(page.locator(".book-card")).toHaveCount(2);
   await expect(page.getByRole("heading", { name: "Explore l’espace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aide le Père Noël" })).toBeVisible();
+  await expect(page.locator(".adventure-menu-visuals img")).toHaveCount(22);
   await page.goto("/notre-histoire");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "La place qu’ils prennent",
@@ -223,6 +221,38 @@ test("catalogue, story and mobile navigation are reachable", async ({
 });
 
 
+test("adventure menus disable used choices and release removed cards without creating duplicates", async ({ page }) => {
+  await page.goto('/personnaliser?cartes=5&aventure=ski');
+  const active = page.locator('select[name="adventure"]:enabled');
+  const uniqueChoices = async () => {
+    const values = await Promise.all((await active.all()).map(select => select.inputValue()));
+    expect(new Set(values).size).toBe(values.length);
+  };
+  await expect(page.locator('#summary-cards li')).toHaveCount(5);
+  await expect(page.locator('#adventure-1')).toHaveValue('ski');
+  await uniqueChoices();
+  await expect(page.locator('#adventure-1 option[value="ski"]')).toHaveJSProperty('disabled', false);
+  await expect(page.locator('#adventure-2 option[value="ski"]')).toHaveJSProperty('disabled', true);
+  await expect(page.locator('#adventure-2 option[value="ski"]')).toHaveText('Au ski — déjà choisie · carte 1');
+  await page.locator('#adventure-1').selectOption('noel');
+  await expect(page.locator('#adventure-2 option[value="ski"]')).toHaveJSProperty('disabled', false);
+  await expect(page.locator('#adventure-2 option[value="noel"]')).toHaveJSProperty('disabled', true);
+  await page.locator('[name="quantity"][value="2"]').check();
+  await expect(page.locator('#adventure-1 option[value="avion"]')).toHaveJSProperty('disabled', false);
+  await expect(page.locator('#adventure-1 option[value="avion"]')).toHaveText('Prend l’avion');
+  await page.locator('#adventure-1').selectOption('avion');
+  const secondChoice = await page.locator('#adventure-2').inputValue();
+  await page.locator('[name="quantity"][value="5"]').check();
+  await expect(page.locator('#adventure-1')).toHaveValue('avion');
+  await expect(page.locator('#adventure-2')).toHaveValue(secondChoice);
+  await expect(page.locator('#adventure-5')).not.toHaveValue('avion');
+  await uniqueChoices();
+  const previewSources = await page.locator('#summary-cards img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src));
+  expect(new Set(previewSources).size).toBe(5);
+  await page.locator('[name="quantity"][value="1"]').check();
+  await expect(page.locator('#adventure-1 option:disabled')).toHaveCount(0);
+});
+
 test("five postcards keep their itinerary, weekly cadence and price through editing", async ({ page }) => {
   const posts: string[] = [];
   page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
@@ -230,13 +260,30 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await expect(page.locator('#summary-total')).toHaveText("25,00 €");
   await expect(page.locator('select[name="adventure"]:enabled')).toHaveCount(5);
   await expect(page.locator('#adventure-1')).toHaveValue("safari");
-  const choices = ["safari", "plongee", "aeroport", "pelleteuse", "circuit"];
+  const choices = ["safari", "bateau", "pelleteuse", "espace", "noel"];
   for (let index = 0; index < choices.length; index++) await page.locator(`#adventure-${index + 1}`).selectOption(choices[index]);
+  await expect(page.locator('#summary-single')).toBeHidden();
+  await expect(page.locator('#summary-cards li')).toHaveCount(5);
+  await expect(page.locator('#summary-title')).toContainText('Son voyage en 5 cartes');
+  await expect(page.locator('#summary-cards li').last()).toContainText('Aide le Père Noël');
+  await expect(page.locator('#summary-cards li').last()).toContainText('+ 28 jours');
+  for (const companion of ['tetine', 'doudou']) {
+    await page.locator(`[name="companion"][value="${companion}"]`).check();
+    for (let index = 0; index < choices.length; index++) {
+      await expect(page.locator('#summary-cards img').nth(index)).toHaveAttribute('src', `/images/${companion}-${choices[index]}.webp`);
+    }
+  }
+  await expect.poll(() => page.locator('#summary-cards img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.locator('#adventure-3').selectOption('circuit');
+  await expect(page.locator('#summary-cards img').nth(2)).toHaveAttribute('src', '/images/doudou-circuit.webp');
   await page.locator('[name="quantity"][value="2"]').check();
+  await expect(page.locator('#summary-cards li')).toHaveCount(2);
   await expect(page.locator('#summary-total')).toHaveText("12,00 €");
   await expect(page.locator('select[name="adventure"]:enabled')).toHaveCount(2);
   await page.locator('[name="quantity"][value="5"]').check();
-  await expect(page.locator('#adventure-5')).toHaveValue("circuit");
+  await expect(page.locator('#summary-cards li')).toHaveCount(5);
+  await expect(page.locator('#summary-cards img').nth(2)).toHaveAttribute('src', '/images/doudou-circuit.webp');
+  await expect(page.locator('#adventure-5')).toHaveValue("noel");
   await page.getByLabel("Le prénom de votre enfant").fill("Camille");
   await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
   await page.locator('#pacifierPhoto').setInputFiles('public/images/tetine-transat.webp');
@@ -255,6 +302,10 @@ test("five postcards keep their itinerary, weekly cadence and price through edit
   await expect(page.locator('#review-book')).toContainText('25,00 €');
   await page.locator('[data-edit="0"]').click();
   await page.locator('[name="quantity"][value="1"]').check();
+  await expect(page.locator('#summary-bundle')).toBeHidden();
+  await expect(page.locator('#summary-single')).toBeVisible();
+  await expect(page.locator('#summary-cards li')).toHaveCount(0);
+  await expect(page.locator('#summary-image')).toHaveAttribute('src', '/images/doudou-safari.webp');
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: 'Continuer' }).click();
   await expect(page.locator('#review-plan li')).toHaveCount(1);

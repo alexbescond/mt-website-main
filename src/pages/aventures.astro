@@ -4,7 +4,7 @@ import Icon from "../components/Icon.astro";
 import AdventureCards from "../components/AdventureCards.astro";
 import PostcardPreview from "../components/PostcardPreview.astro";
 import CardPacks from "../components/CardPacks.astro";
-import { adventures } from "../lib/catalog";
+import { adventures, adventurePreview, type AdventureId } from "../lib/catalog";
 ---
 <Base title="Les aventures en cartes postales">
   <section class="wrap page-intro">
@@ -17,9 +17,19 @@ import { adventures } from "../lib/catalog";
   <section class="wrap section">
     <div class="section-heading"><div><span class="eyebrow">À CHAQUE CARTE, SA DÉCOUVERTE</span><h2>Son prochain <em>terrain de jeu.</em></h2></div><p>Toutes ces aventures sont disponibles<br />dans le menu de personnalisation.</p></div>
     <div class="adventure-menu-grid">
-      {Object.entries(adventures).map(([id, item]) => <a href={`/personnaliser?aventure=${id}`}><Icon name={item.icon} size={26} /><h3>{item.short}</h3><p>{item.description}</p><span class="text-link">Choisir cette aventure →</span></a>)}
+      {Object.entries(adventures).map(([id, item]) => (
+        <a href={`/personnaliser?aventure=${id}`}>
+          <div class="adventure-menu-visuals">
+            {(["tetine", "doudou"] as const).map(companion => {
+              const preview = adventurePreview(id as AdventureId, companion);
+              return <figure><img src={preview.image} alt={preview.alt} width="600" height="400" loading="lazy" /><figcaption>{companion === "doudou" ? "Doudou" : "Tétine"}</figcaption></figure>;
+            })}
+          </div>
+          <h3>{item.short}</h3><p>{item.description}</p><span class="text-link">Choisir cette aventure →</span>
+        </a>
+      ))}
     </div>
-    <p class="quiet-note">Les scènes sans illustration d’exemple seront créées à partir du compagnon choisi.</p>
+    <p class="quiet-note">Des exemples avec Tétine et Doudou. Chaque carte sera créée à partir de la photo de son compagnon.</p>
   </section>
   <section class="section wrap pricing-section"><div class="center-heading"><span class="eyebrow">UN PAIEMENT. PLUSIEURS SURPRISES.</span><h2>Combien de <em>petits bonheurs ?</em></h2><p>De 7 € à 5 € la carte. Frais de port inclus en France métropolitaine.</p></div><CardPacks /></section>
   <PostcardPreview />

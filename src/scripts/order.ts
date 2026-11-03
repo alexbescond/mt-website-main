@@ -9,6 +9,7 @@ import {
   formatPrice,
   dispatchLabel,
   type AdventureId,
+  type CompanionId,
 } from "../lib/catalog";
 const form = document.querySelector<HTMLFormElement>("#order-form")!;
 const panels = [...form.querySelectorAll<HTMLElement>("[data-step]")];
@@ -32,6 +33,7 @@ function newAttemptId(): string {
 }
 let attemptId = newAttemptId();
 let photoUrl: string | undefined;
+let previewKey = "";
 function field(name: string) {
   return form.elements.namedItem(name) as HTMLInputElement;
 }
@@ -48,6 +50,33 @@ function updatePlan() {
   form.querySelectorAll<HTMLElement>("[data-card-index]").forEach((row, index) => {
     row.hidden = index >= pack.quantity;
     row.querySelector("select")!.disabled = row.hidden;
+  });
+  updateAdventureOptions();
+}
+function updateAdventureOptions() {
+  const active = adventureSelects.filter(select => !select.disabled);
+  const owners = new Map<string, number>();
+  // Keep every distinct choice before filling conflicts introduced by a URL
+  // preselection or by restoring cards after increasing the pack size.
+  active.forEach((select, index) => {
+    if (isAdventureId(select.value) && !owners.has(select.value))
+      owners.set(select.value, index);
+  });
+  active.forEach((select, index) => {
+    if (owners.get(select.value) === index) return;
+    const available = Object.keys(adventures).find(id => !owners.has(id));
+    select.value = available ?? "";
+    if (available) owners.set(available, index);
+  });
+  adventureSelects.forEach(select => {
+    for (const option of select.options) {
+      if (!isAdventureId(option.value)) continue;
+      const owner = owners.get(option.value);
+      const taken = owner !== undefined && active[owner] !== select;
+      option.disabled = taken;
+      option.textContent = adventures[option.value].short +
+        (taken ? ` — déjà choisie · carte ${owner + 1}` : "");
+    }
   });
 }
 function chosenCompanion() {
@@ -71,14 +100,15 @@ function summary() {
   updatePlan();
   const pack = chosenPack();
   const companion = chosenCompanion();
-  const preview = adventurePreview(selectedAdventures()[0], companion);
+  const itinerary = selectedAdventures();
+  const preview = adventurePreview(itinerary[0], companion);
   const image = document.querySelector<HTMLImageElement>("#summary-image")!;
   if (image.getAttribute("src") !== preview.image) image.src = preview.image;
   image.alt = preview.alt;
-  document.querySelector("#summary-title")!.textContent = storyTitle(
-    selectedAdventures()[0],
-    companion,
-  );
+  document.querySelector("#summary-title")!.textContent = pack.quantity === 1
+    ? storyTitle(itinerary[0], companion)
+    : `${companions[companion].character} — Son voyage en ${pack.quantity} cartes`;
+  updateCardPreviews(itinerary, companion);
   document.querySelector("#companion-photo-label")!.textContent =
     companion === "doudou" ? "La photo de son doudou" : "La photo de sa tétine";
   document.querySelector("#summary-caption")!.textContent =
@@ -97,6 +127,35 @@ function summary() {
   document.querySelector("#summary-total")!.textContent = formatPrice(pack.totalCents);
   document.querySelector("#summary-cadence")!.textContent = pack.quantity === 1 ? "Un envoi postal" : `${pack.quantity} envois · Une carte tous les 7 jours`;
   if (step === 2) updatePaymentLabel();
+}
+function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
+  const key = `${companion}:${itinerary.join(",")}`;
+  if (key === previewKey) return;
+  previewKey = key;
+  const multiple = itinerary.length > 1;
+  document.querySelector<HTMLElement>("#summary-single")!.hidden = multiple;
+  document.querySelector<HTMLElement>("#summary-bundle")!.hidden = !multiple;
+  const cards = document.querySelector("#summary-cards")!;
+  cards.replaceChildren(...(multiple ? itinerary.map((adventure, index) => {
+    const preview = adventurePreview(adventure, companion);
+    const card = document.createElement("li");
+    const image = document.createElement("img");
+    image.src = preview.image;
+    image.alt = `Carte ${index + 1} : ${preview.alt}`;
+    image.width = 600;
+    image.height = 400;
+    const number = document.createElement("span");
+    number.className = "summary-card-number";
+    number.textContent = `Carte ${index + 1}`;
+    const title = document.createElement("strong");
+    title.textContent = adventures[adventure].short;
+    const timing = document.createElement("small");
+    timing.textContent = dispatchLabel(index);
+    for (const element of [image, number, title, timing]) card.appendChild(element);
+    return card;
+  }) : []));
+  document.querySelector("#summary-bundle-caption")!.textContent =
+    `Exemples illustrés avec ${companions[companion].character}. Vos cartes seront créées à partir de la photo de son compagnon.`;
 }
 function review() {
   const pack = chosenPack();
