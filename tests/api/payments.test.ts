@@ -4,7 +4,8 @@ import { reset } from "cloudflare:test";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import baseSchema from "../../migrations/0001_orders.sql?raw";
 import companionSchema from "../../migrations/0002_companions.sql?raw";
-const schema = baseSchema + "\n" + companionSchema;
+import postcardSchema from "../../migrations/0003_postcards.sql?raw";
+const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema;
 import { api } from "../../src/lib/api";
 import { cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
@@ -32,7 +33,8 @@ function payload() {
   const form = new FormData();
   for (const [k, v] of Object.entries({
     attemptId: crypto.randomUUID(),
-    book: "tropiques",
+    adventure: "tropiques",
+    quantity: "1",
     companion: "tetine",
     companionName: "",
     childName: "Camille",
@@ -57,7 +59,6 @@ function payload() {
       { type: "image/jpeg" },
     ),
   );
-  form.set("childPhoto", form.get("pacifierPhoto")!);
   return form;
 }
 function request(form: FormData, requestOrigin = origin) {
@@ -67,7 +68,7 @@ function request(form: FormData, requestOrigin = origin) {
     body: form,
   });
 }
-function mockStripe(sessionId = "cs_test_fixture") {
+function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 1) {
   return vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(async (input, init) => {
@@ -79,7 +80,8 @@ function mockStripe(sessionId = "cs_test_fixture") {
             : input.url;
       expect(target).toBe("https://api.stripe.com/v1/checkout/sessions");
       const body = new URLSearchParams(String(init?.body));
-      expect(body.get("line_items[0][price_data][unit_amount]")).toBe("2990");
+      expect(body.get("line_items[0][price_data][unit_amount]")).toBe(String(unitAmount));
+      expect(body.get("line_items[0][quantity]")).toBe(String(quantity));
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
       expect(body.get("success_url")).toBe(`${origin}/confirmation`);
       return Response.json({
@@ -109,7 +111,7 @@ async function webhook(
         id: sessionId,
         metadata: { order_id: id },
         payment_status: opts.paid || "paid",
-        amount_total: opts.amount ?? 2990,
+        amount_total: opts.amount ?? 700,
         currency: "eur",
       },
     },
@@ -149,8 +151,9 @@ it("stores private photos and one pending order, fixes the amount and reuses ret
     .bind(id)
     .first();
   expect(order?.status).toBe("pending");
-  expect(order?.amount_cents).toBe(2990);
-  expect(order?.child_key).toBe(`orders/${id}/child`);
+  expect(order?.amount_cents).toBe(700);
+  expect(order?.child_key).toBe(null);
+  expect(await bindings.PHOTOS!.head(`orders/${id}/child`)).toBe(null);
   expect(order?.companion_type).toBe("tetine");
   expect(await bindings.PHOTOS!.head(`orders/${id}/pacifier`)).not.toBe(null);
   expect((await api(request(form), bindings)).status).toBe(200);
@@ -256,9 +259,9 @@ it("rejects cross-origin requests, demo payments, live credentials in test mode 
       ?.count,
   ).toBe(0);
 });
-it("rejects unknown books, invalid postal codes, spoofed and oversized files", async () => {
+it("rejects unknown adventures, invalid postal codes, spoofed and oversized files", async () => {
   let form = payload();
-  form.set("book", "cheap");
+  form.set("adventure", "cheap");
   expect((await api(request(form), bindings)).status).toBe(400);
   form = payload();
   form.set("postalCode", "97100");
@@ -339,8 +342,10 @@ it("removes abandoned data after 7 days and paid photos after 90 days", async ()
   const paidId = String(next.get("attemptId"));
   await api(request(next), bindings);
   await webhook(paidId);
-  await env.DB.prepare("UPDATE orders SET created_at=? WHERE id=?")
-    .bind(Date.now() - 91 * 86400000, paidId)
+  const legacyChildKey = `orders/${paidId}/child`;
+  await bindings.PHOTOS!.put(legacyChildKey, "legacy portrait");
+  await env.DB.prepare("UPDATE orders SET created_at=?,child_key=? WHERE id=?")
+    .bind(Date.now() - 91 * 86400000, legacyChildKey, paidId)
     .run();
   await cleanupOrders(bindings);
   const paid = await env.DB.prepare("SELECT * FROM orders WHERE id=?")
@@ -348,6 +353,8 @@ it("removes abandoned data after 7 days and paid photos after 90 days", async ()
     .first();
   expect(paid?.status).toBe("paid");
   expect(paid?.pacifier_key).toBe(null);
+  expect(paid?.child_key).toBe(null);
+  expect(await bindings.PHOTOS!.head(legacyChildKey)).toBe(null);
   expect(paid?.photos_deleted_at).toBeGreaterThan(0);
 });
 
@@ -368,22 +375,22 @@ it("stores a named doudou and sends only the generic companion title to Stripe",
   });
   const sent = new URLSearchParams(String(fetch.mock.calls[0][1]?.body));
   expect(sent.get("line_items[0][price_data][product_data][name]")).toBe(
-    "Doudou — Sous les cocotiers",
+    "Carte postale personnalisée — Doudou",
   );
   expect(sent.get("cancel_url")).toContain("compagnon=doudou");
   expect(String(fetch.mock.calls[0][1]?.body)).not.toContain("Lapinou");
 });
-it("rejects an unknown companion and a missing portrait before uploading or contacting Stripe", async () => {
+it("rejects an unknown companion and a missing companion photo before uploading or contacting Stripe", async () => {
   const fetch = mockStripe();
   const form = payload();
   form.set("companion", "unknown");
   expect((await api(request(form), bindings)).status).toBe(400);
   form.set("companion", "doudou");
-  form.delete("childPhoto");
+  form.delete("pacifierPhoto");
   const response = await api(request(form), bindings);
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({
-    error: "Ajoutez une photo de votre enfant.",
+    error: "Ajoutez une photo de son compagnon.",
   });
   expect(fetch).not.toHaveBeenCalled();
   expect(
@@ -397,4 +404,74 @@ it("does not reuse a checkout after switching companions", async () => {
   await api(request(form), bindings);
   form.set("companion", "doudou");
   expect((await api(request(form), bindings)).status).toBe(409);
+});
+
+it("rejects child photos without storing a file, creating an order or contacting Stripe", async () => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("childPhoto", form.get("pacifierPhoto")!);
+  const response = await api(request(form), bindings);
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: "Seule la photo de son compagnon est acceptée." });
+  expect((await bindings.PHOTOS!.list()).objects).toEqual([]);
+  expect((await env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first())?.count).toBe(0);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+
+it.each([[1, 700, 700], [2, 600, 1200], [3, 550, 1650], [4, 525, 2100], [5, 500, 2500]])("prices %i postcards on the server and persists the weekly itinerary", async (quantity, unit, total) => {
+  const fetch = mockStripe("cs_test_pack", unit, quantity);
+  const form = payload();
+  const choices = ["safari", "plongee", "avion", "pelleteuse", "circuit"].slice(0, quantity);
+  form.set("quantity", String(quantity));
+  form.set("amount", "1");
+  form.set("unitPriceCents", "1");
+  form.delete("adventure");
+  choices.forEach((choice) => form.append("adventure", choice));
+  expect((await api(request(form), bindings)).status).toBe(200);
+  const order = await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(form.get("attemptId")).first();
+  expect(order).toMatchObject({ product_type: "postcards", card_quantity: quantity, unit_price_cents: unit, amount_cents: total, card_adventures: JSON.stringify(choices), send_interval_days: 7, child_key: null });
+  const sent = new URLSearchParams(String(fetch.mock.calls[0][1]?.body));
+  expect(sent.get("mode")).toBe("payment");
+  expect(sent.get("cancel_url")).toContain(`cartes=${quantity}`);
+  expect(String(fetch.mock.calls[0][1]?.body)).not.toContain("Camille");
+  expect((await webhook(String(form.get("attemptId")), "cs_test_pack", { amount: total })).status).toBe(200);
+});
+
+it.each(["0", "6", "-1", "1.5", "05", "1e0", ""])('rejects invalid postcard quantity "%s" before any upload', async (quantity) => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("quantity", quantity);
+  expect((await api(request(form), bindings)).status).toBe(400);
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first())?.count).toBe(0);
+});
+
+it("requires exactly one supported adventure per card and protects itinerary retries", async () => {
+  const fetch = mockStripe();
+  const form = payload();
+  form.set("quantity", "2");
+  expect((await api(request(form), bindings)).status).toBe(400);
+  form.append("adventure", "invalid");
+  expect((await api(request(form), bindings)).status).toBe(400);
+  form.set("quantity", "1");
+  form.set("adventure", "tropiques");
+  expect((await api(request(form), bindings)).status).toBe(200);
+  form.set("adventure", "bateau");
+  expect((await api(request(form), bindings)).status).toBe(409);
+  form.set("quantity", "2");
+  form.append("adventure", "avion");
+  expect((await api(request(form), bindings)).status).toBe(409);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("preserves historical book orders and webhook references during the postcard migration", async () => {
+  await reset();
+  const apply = async (sql: string) => env.DB.batch(sql.split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await apply(baseSchema + "\n" + companionSchema);
+  await env.DB.prepare(`INSERT INTO orders (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,postal_code,city,amount_cents,payment_mode,consent_version,created_at,status,stripe_session_id,pacifier_key,companion_type,companion_name) VALUES ('old','hash','token','ski','Camille','Alex','Exemple','parent@example.com','1 rue du Test','75001','Paris',2990,'test','2026-10-21',1,'paid','cs_old','orders/old/pacifier','doudou','Lapinou')`).run();
+  await env.DB.prepare("INSERT INTO stripe_events VALUES ('evt_old','old','checkout.session.completed',1)").run();
+  await apply(postcardSchema);
+  expect(await env.DB.prepare("SELECT * FROM orders WHERE id='old'").first()).toMatchObject({ id: "old", book: "ski", amount_cents: 2990, product_type: "book", status: "paid", stripe_session_id: "cs_old", access_token: "token", pacifier_key: "orders/old/pacifier", companion_name: "Lapinou" });
+  expect((await env.DB.prepare("SELECT order_id FROM stripe_events WHERE id='evt_old'").first())?.order_id).toBe("old");
 });

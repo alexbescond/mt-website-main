@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { storyTitle, PRICE_CENTS } from "./catalog";
+import { companions, SEND_INTERVAL_DAYS } from "./catalog";
 import {
   InputError,
   limitedBody,
@@ -75,7 +75,7 @@ export async function createCheckout(request: Request, env: AppEnv) {
     );
   if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))
     throw new InputError("Format de formulaire invalide.", 415);
-  const body = await limitedBody(request, 11 * 1024 * 1024);
+  const body = await limitedBody(request, 6 * 1024 * 1024);
   let form: FormData;
   try {
     form = await new Response(body, {
@@ -85,16 +85,11 @@ export async function createCheckout(request: Request, env: AppEnv) {
     throw new InputError("Formulaire illisible.");
   }
   const data = validateOrder(form);
+  if (form.has("childPhoto"))
+    throw new InputError("Seule la photo de son compagnon est acceptée.");
   const pacifier = await validatePhoto(form.get("pacifierPhoto"), true);
-  const child = await validatePhoto(
-    form.get("childPhoto"),
-    true,
-    "votre enfant",
-  );
   const requestHash = await sha256(
-    JSON.stringify(data) +
-      (await sha256(pacifier!.bytes)) +
-      (child ? await sha256(child.bytes) : ""),
+    JSON.stringify(data) + (await sha256(pacifier!.bytes)),
   );
   const existing = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
     .bind(data.attemptId)
@@ -120,18 +115,17 @@ export async function createCheckout(request: Request, env: AppEnv) {
   const token =
     existing?.access_token || crypto.randomUUID() + crypto.randomUUID();
   const pacifierKey = `orders/${id}/pacifier`;
-  const childKey = child ? `orders/${id}/child` : null;
   // Record the intent first: interrupted uploads are covered by the retention task.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   )
     .bind(
       id,
       requestHash,
       token,
-      data.book,
+      data.cardAdventures[0],
       data.childName,
       data.firstName,
       data.lastName,
@@ -142,13 +136,18 @@ export async function createCheckout(request: Request, env: AppEnv) {
       data.city,
       data.notes,
       pacifierKey,
-      childKey,
-      PRICE_CENTS,
+      null,
+      data.amountCents,
       env.CHECKOUT_MODE,
-      "2026-10-21",
+      "2026-11-02",
       Date.now(),
       data.companion,
       data.companionName,
+      "postcards",
+      data.quantity,
+      data.unitPriceCents,
+      JSON.stringify(data.cardAdventures),
+      SEND_INTERVAL_DAYS,
     )
     .run();
   const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
@@ -162,10 +161,6 @@ export async function createCheckout(request: Request, env: AppEnv) {
   await photos.put(pacifierKey, pacifier!.bytes, {
     httpMetadata: { contentType: pacifier!.mime },
   });
-  if (child && childKey)
-    await photos.put(childKey, child.bytes, {
-      httpMetadata: { contentType: child.mime },
-    });
   const origin = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
     ? url.origin
     : env.SITE_ORIGIN;
@@ -180,20 +175,20 @@ export async function createCheckout(request: Request, env: AppEnv) {
       metadata: { order_id: id },
       line_items: [
         {
-          quantity: 1,
+          quantity: data.quantity,
           price_data: {
             currency: "eur",
-            unit_amount: PRICE_CENTS,
+            unit_amount: data.unitPriceCents,
             product_data: {
-              name: storyTitle(data.book, data.companion),
+              name: `Carte postale personnalisée — ${companions[data.companion].character}`,
               description:
-                "Livre papier personnalisé — livraison en France métropolitaine incluse",
+                "Une carte expédiée tous les 7 jours — frais de port inclus en France métropolitaine",
             },
           },
         },
       ],
       success_url: `${origin}/confirmation`,
-      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.book}&compagnon=${data.companion}`,
+      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.cardAdventures[0]}&compagnon=${data.companion}&cartes=${data.quantity}`,
     },
     { idempotencyKey: `mt-checkout-${id}` },
   );

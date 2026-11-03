@@ -53,7 +53,7 @@ import Icon from "../components/Icon.astro";
         if (data.status === "paid") {
           title.textContent = "Le grand voyage peut commencer.";
           copy.textContent =
-            "Votre paiement est confirmé. Votre commande est enregistrée pour la préparation de votre livre personnalisé.";
+            "Votre paiement est confirmé. Votre commande est enregistrée pour la préparation de vos cartes postales. Après le premier envoi, les cartes suivantes seront expédiées à 7 jours d’intervalle.";
           document.querySelector("#order-reference")!.textContent =
             `Référence : ${data.reference}`;
           return;

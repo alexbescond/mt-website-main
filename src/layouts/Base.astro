@@ -2,6 +2,7 @@
 import "@fontsource-variable/dm-sans";
 import "@fontsource-variable/fraunces";
 import "../styles/site.css";
+import "../styles/postcards.css";
 import Logo from "../components/Logo.astro";
 import Icon from "../components/Icon.astro";
 import { SITE_NAME } from "../lib/catalog";
@@ -12,7 +13,7 @@ interface Props {
 }
 const {
   title = "Ses petits compagnons, de très grandes aventures",
-  description = "Des histoires personnalisées avec la vraie tétine ou le vrai doudou de votre enfant. Des aventures à lire ensemble, pour rêver et grandir à son rythme.",
+  description = "De 1 à 5 cartes postales personnalisées avec le doudou ou la tétine de votre enfant. Une carte expédiée chaque semaine, dès 5 € la carte par 5.",
   minimal = false,
 } = Astro.props;
 const path = Astro.url.pathname;
@@ -63,6 +64,7 @@ const path = Astro.url.pathname;
           >
             Notre histoire
           </a>
+          <a href="/#tarifs">Les tarifs</a>
           <a href="/#questions">Vos questions</a>
         </nav>
       )}
@@ -70,7 +72,7 @@ const path = Astro.url.pathname;
         class={minimal ? "back-link" : "button button-small header-cta"}
         href={minimal ? "/aventures" : "/personnaliser"}
       >
-        {minimal ? "← Les aventures" : "Créer son histoire"}
+        {minimal ? "← Les aventures" : "Créer ses cartes"}
         {!minimal && <Icon name="arrow" size={16} />}
       </a>
       {!minimal && (
@@ -96,8 +98,9 @@ const path = Astro.url.pathname;
         <a href="/aventures">Les aventures</a>
         <a href="/#comment-ca-marche">Le concept</a>
         <a href="/notre-histoire">Notre histoire</a>
-        <a href="/#questions">Vos questions</a>
-        <a href="/personnaliser">Créer son histoire →</a>
+        <a href="/#tarifs">Les tarifs</a>
+          <a href="/#questions">Vos questions</a>
+        <a href="/personnaliser">Créer ses cartes →</a>
       </nav>
     )}
     <main id="contenu">
@@ -110,7 +113,7 @@ const path = Astro.url.pathname;
           <p>
             Leurs petits compagnons ont tant
             <br />
-            de belles histoires à leur raconter.
+            de petits mots à leur envoyer.
           </p>
         </div>
         <div class="footer-links">
@@ -125,12 +128,12 @@ const path = Astro.url.pathname;
           <a href="/informations#confidentialite">
             Vos photos, votre confiance
           </a>
-          <a href="/personnaliser">Personnaliser un livre</a>
+          <a href="/personnaliser">Personnaliser ses cartes</a>
         </div>
         <div class="footer-note">
           <Icon name="heart" size={27} />
           <p>
-            Des histoires à partager.
+            Des cartes à partager.
             <br />À son rythme. Avec tendresse.
           </p>
           <span>

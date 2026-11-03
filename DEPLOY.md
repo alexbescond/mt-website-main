@@ -61,7 +61,7 @@ npx wrangler secret put STRIPE_WEBHOOK_SECRET --name mt-website-main
 ```
 
 3. Créer le webhook Stripe `https://les-vacances-de-ma-tetine.com/api/stripe/webhook` pour `checkout.session.completed`, `checkout.session.async_payment_succeeded` et `checkout.session.expired`. Utiliser la version API du SDK installé, visible dans `node_modules/stripe/esm/apiVersion.js`, pour les snapshots d’événements.
-4. Régler `CHECKOUT_MODE` sur `test`, reconstruire et redéployer. Le code exige une clé `sk_test_` et un secret webhook ; le prix est toujours 2990 centimes, calculé sur le serveur.
+4. Régler `CHECKOUT_MODE` sur `test`, reconstruire et redéployer. Le code exige une clé `sk_test_` et un secret webhook ; le total est calculé sur le serveur selon la quantité : 700, 1200, 1650, 2100 ou 2500 centimes pour 1 à 5 cartes.
 5. Faire un achat de test, vérifier la commande D1 `paid`, son montant, sa photo privée et la confirmation. Tester également l’annulation et le renvoi d’un événement. Aucun test Stripe connecté n’est effectué automatiquement.
 
 En local : copier `.dev.vars.example` vers `.dev.vars`, y renseigner les secrets sandbox, passer `CHECKOUT_MODE` à `test` localement et lancer `npm run preview`. Stripe CLI peut transférer les événements vers `http://localhost:8787/api/stripe/webhook` ; utiliser le secret `whsec_` spécifique à cette session CLI.
@@ -89,13 +89,13 @@ Alternative homogène avec le site de médiation : Workers Builds sur `main`, No
 
 ## Préparer les commandes
 
-Les achats apparaissent dans le tableau D1 `orders`. Filtrer **`status='paid' AND payment_mode='live'`** pour la fabrication. Les colonnes `book`, `child_name`, `notes`, adresse et clés photo contiennent les informations nécessaires. Récupérer les photos via le tableau de bord R2 authentifié ou :
+Les achats apparaissent dans le tableau D1 `orders`. Filtrer **`status='paid' AND payment_mode='live'`** pour la fabrication. Les colonnes `product_type`, `card_quantity`, `card_adventures` (JSON dans l’ordre des envois), `send_interval_days`, `companion_type`, `companion_name`, `child_name`, `notes`, adresse et clés photo contiennent les informations nécessaires. Pour `product_type=postcards`, préparer une carte par aventure et expédier à J0, J+7, J+14, J+21 et J+28 selon la quantité, à partir du premier envoi effectif. Les anciennes commandes `product_type=book` doivent continuer à être traitées comme des livres. Récupérer les photos via le tableau de bord R2 authentifié ou :
 
 ```sh
 npx wrangler r2 object get mt-private-photos/orders/ID_COMMANDE/pacifier --remote --jurisdiction eu --file .context/photo-tetine
 ```
 
-Ne jamais publier ces photos, ni les ajouter à Git. Utiliser un espace d’exploitation privé pour la fabrication. Il n’y a pas encore d’interface d’administration ni de suivi d’expédition.
+Ne jamais publier ces photos, ni les ajouter à Git. Utiliser un espace d’exploitation privé pour la fabrication. Il n’y a pas encore d’interface d’administration, d’intégration imprimeur ni de suivi d’expédition. Tenir le planning réel et les dates d’envoi dans un registre privé : le site enregistre le programme mais n’expédie pas automatiquement les cartes.
 
 Le cron quotidien à 03:17 UTC supprime les commandes non payées après 7 jours, et les photos des commandes payées après 90 jours. Il conserve les données de commande payée ; une politique comptable/administrative complète reste à définir. Le code limite chaque passage à 100 commandes ; surveiller les logs `retention_complete` et adapter le traitement avant une montée en charge.
 

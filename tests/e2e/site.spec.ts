@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("home, illustrations, book preview, FAQ and navigation work", async ({
+test("home, illustrations, postcard preview, FAQ and navigation work", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -10,12 +10,12 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
   );
   await expect(page.locator(".book-card")).toHaveCount(2);
   await page
-    .getByRole("button", { name: "Feuilleter Sous les cocotiers" })
+    .getByRole("button", { name: "Voir la carte Sous les cocotiers" })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.locator("#preview-counter")).toHaveText("1 / 6");
-  await page.getByRole("button", { name: "Page suivante" }).click();
-  await expect(page.locator("#preview-counter")).toHaveText("2 / 6");
+  await expect(page.locator("#preview-counter")).toHaveText("Recto · 1 / 2");
+  await page.getByRole("button", { name: "Voir le verso" }).click();
+  await expect(page.locator("#preview-counter")).toHaveText("Verso · 2 / 2");
   await page.getByRole("button", { name: "Fermer l’aperçu" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page
@@ -24,7 +24,7 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
     .click();
   await expect(
     page.getByText(
-      "Oui, dans ce parcours elle permet de composer la dernière scène",
+      "Non, seule la photo de son compagnon est nécessaire.",
       {
         exact: false,
       },
@@ -55,7 +55,7 @@ test("home, illustrations, book preview, FAQ and navigation work", async ({
     fullPage: true,
   });
 });
-test("personalization to demo confirmation, required portrait, editing and no data transmission", async ({
+test("personalization with only the companion photo, editing and no data transmission", async ({
   page,
 }) => {
   const posts: string[] = [];
@@ -64,6 +64,7 @@ test("personalization to demo confirmation, required portrait, editing and no da
   });
   await page.goto("/personnaliser?aventure=ski");
   await expect(page.locator("#mode-notice")).toContainText("démonstration");
+  await expect(page.locator('input[type="file"]')).toHaveCount(1);
   await expect(page.locator("#summary-title")).toHaveText(
     "Tétine — La tête dans les flocons",
   );
@@ -75,11 +76,6 @@ test("personalization to demo confirmation, required portrait, editing and no da
     .setInputFiles("public/images/tetine-transat.webp");
   await page.locator('[name="photoConsent"]').check();
   await page.getByRole("button", { name: "Continuer" }).click();
-  await expect(page.locator('[data-step="0"]')).toBeVisible();
-  await page
-    .locator("#childPhoto")
-    .setInputFiles("public/images/tetine-avion.webp");
-  await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByLabel("Votre prénom", { exact: false }).fill("Alex");
   await page.getByLabel("Votre nom", { exact: false }).fill("Exemple");
   await page.getByLabel("Votre adresse e-mail").fill("parent@example.com");
@@ -90,7 +86,7 @@ test("personalization to demo confirmation, required portrait, editing and no da
   await page.getByLabel("Ville", { exact: false }).fill("Paris");
   await page.getByRole("button", { name: "Continuer" }).click();
   await expect(page.locator("#review-child")).toContainText("Camille");
-  await expect(page.locator("#review-photos img")).toHaveCount(2);
+  await expect(page.locator("#review-photos img")).toHaveCount(1);
   await page.locator('[data-edit="0"]').click();
   await page.getByLabel("Le prénom de votre enfant").fill("Léon");
   await page.getByRole("button", { name: "Continuer" }).click();
@@ -102,7 +98,7 @@ test("personalization to demo confirmation, required portrait, editing and no da
   await expect(page.locator("#status-copy")).toContainText("Aucun paiement");
   expect(posts).toEqual([]);
 });
-test("invalid files can be replaced and a portrait removed for correction", async ({
+test("invalid companion photos can be replaced with a valid image", async ({
   page,
 }) => {
   await page.goto("/personnaliser");
@@ -118,12 +114,8 @@ test("invalid files can be replaced and a portrait removed for correction", asyn
     .locator("#pacifierPhoto")
     .setInputFiles("public/images/tetine-transat.webp");
   await expect(page.locator("#pacifier-error")).toBeEmpty();
-  await page
-    .locator("#childPhoto")
-    .setInputFiles("public/images/tetine-avion.webp");
-  await expect(page.locator("#remove-child")).toBeVisible();
-  await page.getByRole("button", { name: "Retirer le portrait" }).click();
-  await expect(page.locator("#remove-child")).toBeHidden();
+  await expect(page.locator(".upload-preview")).toBeVisible();
+  await expect(page.locator('input[type="file"]')).toHaveCount(1);
 });
 test("private endpoints, cancel, 404 and noindex behave correctly", async ({
   page,
@@ -165,6 +157,7 @@ test("doudou preselection, nickname and companion photo label are reflected in t
   await expect(page.locator("#companion-photo-label")).toHaveText(
     "La photo de son doudou",
   );
+  await expect(page.locator("#summary-image")).toHaveAttribute("src", "/images/doudou-transat.webp");
   await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
   await page.locator('[name="companion"][value="tetine"]').check();
   await expect(page.locator("#summary-title")).toHaveText(
@@ -173,6 +166,30 @@ test("doudou preselection, nickname and companion photo label are reflected in t
   await expect(page.locator("#companion-photo-label")).toHaveText(
     "La photo de sa tétine",
   );
+  await expect(page.locator("#summary-image")).toHaveAttribute("src", "/images/tetine-transat.webp");
+});
+
+test("switching companion and adventure updates the illustration and caption", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/personnaliser");
+  const image = page.locator("#summary-image");
+  const scenes = { tropiques: "transat", ski: "ski", plongee: "plongee", avion: "avion", aeroport: "enregistrement" };
+  for (const [adventure, scene] of Object.entries(scenes)) {
+    await page.locator("#adventure-1").selectOption(adventure);
+    for (const companion of ["doudou", "tetine"]) {
+      await page.locator(`[name="companion"][value="${companion}"]`).check();
+      await expect(image).toHaveAttribute("src", `/images/${companion}-${scene}.webp`);
+      await expect(image).toHaveAttribute("alt", new RegExp(companion === "doudou" ? "Doudou" : "Tétine"));
+      await expect(page.locator("#summary-caption")).toHaveText(`EXEMPLE ILLUSTRÉ AVEC ${companion === "doudou" ? "DOUDOU" : "TÉTINE"}`);
+      await expect.poll(() => image.evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
+    }
+  }
+  await page.locator("#adventure-1").selectOption("safari");
+  await page.locator('[name="companion"][value="doudou"]').check();
+  await expect(image).toHaveAttribute("src", "/images/doudou-transat.webp");
+  await expect(page.locator("#summary-caption")).toContainText("SCÈNE À PERSONNALISER");
+  expect(errors).toEqual([]);
 });
 test("catalogue, story and mobile navigation are reachable", async ({
   page,
@@ -193,7 +210,7 @@ test("catalogue, story and mobile navigation are reachable", async ({
   }
   await expect(page).toHaveURL(/aventures$/);
   await expect(page.locator(".book-card")).toHaveCount(2);
-  await expect(page.getByText("Un voyage dans l’espace")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Explore l’espace" })).toBeVisible();
   await page.goto("/notre-histoire");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "La place qu’ils prennent",
@@ -203,4 +220,47 @@ test("catalogue, story and mobile navigation are reachable", async ({
       () => document.documentElement.scrollWidth,
     ),
   ).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
+
+
+test("five postcards keep their itinerary, weekly cadence and price through editing", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
+  await page.goto("/personnaliser?compagnon=doudou&cartes=5&aventure=safari");
+  await expect(page.locator('#summary-total')).toHaveText("25,00 €");
+  await expect(page.locator('select[name="adventure"]:enabled')).toHaveCount(5);
+  await expect(page.locator('#adventure-1')).toHaveValue("safari");
+  const choices = ["safari", "plongee", "aeroport", "pelleteuse", "circuit"];
+  for (let index = 0; index < choices.length; index++) await page.locator(`#adventure-${index + 1}`).selectOption(choices[index]);
+  await page.locator('[name="quantity"][value="2"]').check();
+  await expect(page.locator('#summary-total')).toHaveText("12,00 €");
+  await expect(page.locator('select[name="adventure"]:enabled')).toHaveCount(2);
+  await page.locator('[name="quantity"][value="5"]').check();
+  await expect(page.locator('#adventure-5')).toHaveValue("circuit");
+  await page.getByLabel("Le prénom de votre enfant").fill("Camille");
+  await page.getByLabel("Le petit nom de son compagnon").fill("Lapinou");
+  await page.locator('#pacifierPhoto').setInputFiles('public/images/tetine-transat.webp');
+  await page.locator('[name="photoConsent"]').check();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByLabel('Votre prénom', { exact: false }).fill('Alex');
+  await page.getByLabel('Votre nom', { exact: false }).fill('Exemple');
+  await page.getByLabel('Votre adresse e-mail').fill('parent@example.com');
+  await page.getByLabel('Adresse de livraison', { exact: false }).fill('1 rue du Test');
+  await page.getByLabel('Code postal').fill('75001');
+  await page.getByLabel('Ville', { exact: false }).fill('Paris');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.locator('#review-plan li')).toHaveCount(5);
+  await expect(page.locator('#review-plan li').last()).toContainText('+ 28 jours');
+  await expect(page.locator('#review-companion')).toContainText('Lapinou');
+  await expect(page.locator('#review-book')).toContainText('25,00 €');
+  await page.locator('[data-edit="0"]').click();
+  await page.locator('[name="quantity"][value="1"]').check();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.locator('#review-plan li')).toHaveCount(1);
+  await expect(page.locator('#review-book')).toContainText('7,00 €');
+  await page.locator('[name="termsConsent"]').check();
+  await page.getByRole('button', { name: 'Terminer la démonstration' }).click();
+  await expect(page).toHaveURL(/confirmation\?demo=1/);
+  expect(posts).toEqual([]);
 });

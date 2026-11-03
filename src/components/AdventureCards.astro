@@ -1,60 +1,24 @@
 ---
-import { books, PRICE_LABEL } from "../lib/catalog";
+import { adventures } from "../lib/catalog";
 import Icon from "./Icon.astro";
+import Postcard from "./Postcard.astro";
+const featured = ["tropiques", "ski"] as const;
 ---
-
 <div class="book-grid">
-  {Object.entries(books).map(([id, book], i) => (
-    <article class={`book-card ${book.color}`}>
-      <div class="book-image">
-        <img
-          src={book.image}
-          width="1200"
-          height="800"
-          alt={
-            id === "ski"
-              ? "Une petite tétine découvre les joies du ski dans les montagnes enneigées"
-              : "Une petite tétine prend le soleil au bord d’un lagon turquoise"
-          }
-          loading="lazy"
-        />
-        <span class="book-tag">
-          <Icon name={book.icon} size={16} />
-          {book.eyebrow}
-        </span>
-        <button
-          class="preview-button"
-          data-preview={id}
-          aria-label={`Feuilleter ${book.title}`}
-        >
-          <Icon name="book" size={17} /> Feuilleter
-        </button>
-      </div>
+  {featured.map((id, i) => (
+    <article class="book-card postcard-product">
+      <Postcard adventure={id} />
       <div class="book-info">
-        <div class="book-number">
-          AVENTURE 0{i + 1}
-          <span>DOUDOU OU TÉTINE</span>
-        </div>
-        <h3>{book.title}</h3>
-        <p>{book.description}</p>
+        <div class="book-number">CARTE POSTALE 0{i + 1}<span>DOUDOU OU TÉTINE</span></div>
+        <h3>{adventures[id].title}</h3>
+        <p>{id === "ski" ? "Une escapade dans la neige, un petit mot de son compagnon et une surprise à découvrir dans la boîte aux lettres." : "Du soleil, du sable et un message rien que pour lui. Son compagnon lui raconte son escapade, sur une vraie carte à garder."}</p>
+        <button type="button" class="postcard-preview-link text-link" data-preview={id} aria-label={`Voir la carte ${adventures[id].title}`}>Voir le recto et le verso <Icon name="arrow" size={16} /></button>
         <div class="book-purchase">
-          <div class="price">
-            {PRICE_LABEL}
-            <span>Prix provisoire · livraison incluse*</span>
-          </div>
-          <a
-            href={`/personnaliser?aventure=${id}`}
-            class="round-link"
-            aria-label={`Personnaliser ${book.title}`}
-          >
-            <Icon name="arrow" size={23} />
-          </a>
+          <div class="price">Dès 5 € <span>la carte dans le lot de 5 · 7 € à l’unité</span></div>
+          <a href={`/personnaliser?aventure=${id}`} class="round-link" aria-label={`Personnaliser ${adventures[id].title}`}><Icon name="arrow" size={23} /></a>
         </div>
       </div>
     </article>
   ))}
 </div>
-<p class="quiet-note">
-  Illustrations d’exemple avec Tétine. Votre histoire se prépare avec la photo
-  du compagnon choisi. *France métropolitaine.
-</p>
+<p class="quiet-note">Exemples de mise en page avec Tétine. Vos cartes seront personnalisées avec votre compagnon. Frais de port inclus en France métropolitaine.</p>

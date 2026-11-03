@@ -2,36 +2,17 @@
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import AdventureCards from "../components/AdventureCards.astro";
-import BookPreview from "../components/BookPreview.astro";
+import PostcardPreview from "../components/PostcardPreview.astro";
+import CardPacks from "../components/CardPacks.astro";
 const faqs = [
-  [
-    "Est-ce vraiment son doudou ou sa tétine dans le livre ?",
-    "Oui, le projet part de la photo de son propre compagnon : sa forme, ses couleurs et ses petits détails servent de référence aux illustrations. Les personnages visibles ici sont des exemples. Le rendu personnalisé sera vérifié avant impression.",
-  ],
-  [
-    "Faut-il nous envoyer son doudou ou sa tétine ?",
-    "Une photo suffit ! Son compagnon reste chez vous. Pour la tétine, vous choisissez en famille le moment et la manière de vivre cette étape. Pour le doudou, l’aventure peut simplement être un jeu d’imagination partagé.",
-  ],
-  [
-    "À quel âge peut-on lire ces histoires ?",
-    "Les textes sont pensés pour les enfants de 2 à 5 ans, avec des phrases courtes et des images qui racontent beaucoup. On les découvre ensemble, à voix haute, et on les relit autant de fois qu’on en a envie.",
-  ],
-  [
-    "La photo de mon enfant est-elle obligatoire ?",
-    "Oui, dans ce parcours elle permet de composer la dernière scène : son portrait original est placé dans un cadre près du lit de son compagnon. Son visage n’est pas redessiné. Le prénom de votre enfant apparaît aussi dans l’histoire.",
-  ],
-  [
-    "Est-ce une méthode pour arrêter la tétine ?",
-    "C’est d’abord une histoire à lire ensemble, pour parler de cette étape et accueillir les émotions. Elle ne garantit pas un arrêt facile ou immédiat. Votre enfant a le droit d’être triste, de poser des questions et de prendre son temps.",
-  ],
-  [
-    "Peut-on déjà commander ?",
-    "Le site est actuellement en préparation : vous pouvez essayer la personnalisation sans paiement ni envoi de photos. Le tarif de 29,90 € est provisoire. Le format, les délais et le prix définitif seront précisés avant l’ouverture des ventes.",
-  ],
-  [
-    "Que deviennent nos photos ?",
-    "Dans la démonstration, elles restent dans votre navigateur et ne sont pas envoyées. Pour les futures commandes, elles seront conservées dans un espace privé, utilisées pour le livre puis supprimées au plus tard après 90 jours. Retrouvez les détails dans notre page de confidentialité.",
-  ],
+  ["Est-ce vraiment son doudou ou sa tétine sur les cartes ?", "Oui ! Sa photo sert de référence pour les illustrations. Chaque carte raconte une aventure de son compagnon, avec un petit mot adressé à votre enfant. Les visuels présentés ici sont des exemples."],
+  ["Comment fonctionnent les envois ?", "Vous choisissez de 1 à 5 cartes et une aventure pour chacune. Après préparation de la première carte, les suivantes sont expédiées à 7 jours d’intervalle, à la même adresse. Les délais postaux peuvent faire varier les dates de réception."],
+  ["Combien coûtent les cartes ?", "1 carte : 7 € ; 2 cartes : 12 € ; 3 cartes : 16,50 € ; 4 cartes : 21 € ; 5 cartes : 25 €. Les frais de port en France métropolitaine sont inclus. Un seul paiement, sans abonnement ni renouvellement automatique."],
+  ["Faut-il nous envoyer son doudou ou sa tétine ?", "Une photo suffit ! Son compagnon reste chez vous. Doudou peut voyager dans les images sans quitter les bras de votre enfant. Pour Tétine, vous choisissez en famille comment raconter ses vacances."],
+  ["La photo de mon enfant est-elle obligatoire ?", "Non, seule la photo de son compagnon est nécessaire. Son prénom personnalise les petits mots. Aucune photo de votre enfant n’est demandée."],
+  ["Est-ce une méthode pour arrêter la tétine ?", "Ces cartes proposent une histoire à partager, à son rythme. Elles ne garantissent pas un arrêt facile ou immédiat. Votre enfant a le droit d’être triste, de poser des questions et de prendre son temps."],
+  ["Peut-on déjà commander ?", "Le site est en démonstration : vous pouvez préparer vos cartes, sans paiement ni envoi de photos. Les commandes et les envois réels ouvriront après la finalisation de la fabrication et des informations commerciales."],
+  ["Que deviennent nos photos ?", "En démonstration, elles restent dans votre navigateur. Pour les futures commandes, elles seront stockées en privé pour personnaliser vos cartes, puis supprimées au plus tard après 90 jours. Consultez les informations de confidentialité pour les détails."],
 ];
 ---
 
@@ -54,20 +35,19 @@ const faqs = [
       </h1>
       <p>
         Et si son doudou ou sa tétine avait mille choses à lui raconter&nbsp;?
-        Des histoires personnalisées où{" "}
-        <strong>son compagnon devient le héros.</strong>
+        De vraies cartes postales où{" "}
+        <strong>son compagnon lui écrit, chaque semaine.</strong>
       </p>
       <div class="hero-actions">
         <a class="button" href="/personnaliser">
-          Imaginer son histoire <Icon name="arrow" size={18} />
+          Créer ses cartes <Icon name="arrow" size={18} />
         </a>
         <a class="text-link" href="#comment-ca-marche">
           Comment ça marche ?
         </a>
       </div>
       <div class="hero-caption">
-        <Icon name="heart" size={17} /> Sa photo. Son prénom. Leur histoire à
-        eux.
+        <Icon name="heart" size={17} /> 1 à 5 cartes · Dès 5 € la carte par 5 · Port inclus
       </div>
     </div>
     <div class="hero-art">
@@ -103,7 +83,7 @@ const faqs = [
       </span>
       <span>
         <Icon name="book" />
-        Une histoire à lire ensemble
+        Une carte chaque semaine
       </span>
       <span>
         <Icon name="heart" />
@@ -190,6 +170,11 @@ const faqs = [
     </div>
     <AdventureCards />
   </section>
+  <section id="tarifs" class="section wrap pricing-section">
+    <div class="center-heading"><span class="eyebrow">LES PETITS RENDEZ-VOUS FONT LES GRANDS SOUVENIRS</span><h2>Un coucou, ou <em>tout un voyage.</em></h2><p>De 1 à 5 cartes personnalisées. Un paiement unique, aucun abonnement.<br />Frais de port inclus en France métropolitaine.</p></div>
+    <CardPacks />
+    <p class="quiet-note">Après le premier envoi, une carte est expédiée tous les 7 jours. Les dates de réception dépendent de l’acheminement postal.</p>
+  </section>
   <section id="comment-ca-marche" class="how-section">
     <div class="wrap section">
       <div class="center-heading">
@@ -204,10 +189,10 @@ const faqs = [
         <article>
           <span class="step-number">01</span>
           <Icon name="plane" size={32} />
-          <h3>Choisissez son aventure</h3>
+          <h3>Composez son voyage</h3>
           <p>
-            Doudou ou tétine ? Palmiers ou flocons ? Imaginez le voyage qui fera
-            briller ses yeux.
+            De 1 à 5 cartes. Safari, plongée, avion… choisissez une aventure pour
+            chaque envoi.
           </p>
         </article>
         <article>
@@ -215,17 +200,17 @@ const faqs = [
           <Icon name="camera" size={32} />
           <h3>Présentez-nous son héros</h3>
           <p>
-            Son prénom, une photo de son compagnon et son portrait pour la douce
-            pensée du soir.
+            Son prénom, la photo de son doudou ou de sa tétine, et les petits
+            détails qui le rendent unique.
           </p>
         </article>
         <article>
           <span class="step-number">03</span>
           <Icon name="book" size={32} />
-          <h3>Ouvrez le livre ensemble</h3>
+          <h3>Guettez le facteur ensemble</h3>
           <p>
-            Retrouvez son compagnon dans une histoire à lui. Un moment à
-            partager, un souvenir à garder.
+            Une carte expédiée tous les 7 jours. Un petit mot à lire ensemble,
+            un rendez-vous à attendre avec impatience.
           </p>
         </article>
       </div>
@@ -291,7 +276,7 @@ const faqs = [
         </div>
         <p>
           Un aperçu de l’univers que nous imaginons :<br />
-          des histoires, des cartes et un carnet à remplir.
+          une illustration, un petit mot et beaucoup de tendresse.
         </p>
       </div>
       <div class="gallery-grid">
@@ -333,8 +318,7 @@ const faqs = [
         </figure>
       </div>
       <p class="quiet-note">
-        Cartes postales et carnet de voyage : des idées en préparation pour
-        prolonger l’aventure.
+        Des cartes à recevoir, à relire et à garder. Une aventure différente à chaque envoi, si vous le souhaitez.
       </p>
     </div>
   </section>
@@ -373,10 +357,10 @@ const faqs = [
       <em>une grande aventure ?</em>
     </h2>
     <a class="button" href="/personnaliser">
-      Créer son histoire <Icon name="arrow" size={18} />
+      Créer ses cartes <Icon name="arrow" size={18} />
     </a>
     <p>Une petite histoire. Une grande place dans son cœur.</p>
     <Icon name="plane" size={65} />
   </section>
-  <BookPreview />
+  <PostcardPreview />
 </Base>

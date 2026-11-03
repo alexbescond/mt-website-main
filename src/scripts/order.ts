@@ -1,10 +1,14 @@
 import {
-  books,
+  adventures,
+  adventurePreview,
   companions,
-  isBookId,
+  isAdventureId,
   isCompanionId,
   storyTitle,
-  PRICE_LABEL,
+  getCardPack,
+  formatPrice,
+  dispatchLabel,
+  type AdventureId,
 } from "../lib/catalog";
 const form = document.querySelector<HTMLFormElement>("#order-form")!;
 const panels = [...form.querySelectorAll<HTMLElement>("[data-step]")];
@@ -27,13 +31,24 @@ function newAttemptId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 let attemptId = newAttemptId();
-const objectUrls = new Map<string, string>();
+let photoUrl: string | undefined;
 function field(name: string) {
   return form.elements.namedItem(name) as HTMLInputElement;
 }
-function chosenBook() {
-  const value = new FormData(form).get("book");
-  return isBookId(value) ? value : "tropiques";
+const adventureSelects = [...form.querySelectorAll("select")].filter(select => select.name === "adventure");
+function selectedAdventures(): AdventureId[] {
+  return adventureSelects.filter(select => !select.disabled).map((select) => isAdventureId(select.value) ? select.value : "tropiques");
+}
+function chosenPack() {
+  const quantity = Number(new FormData(form).get("quantity"));
+  return getCardPack(quantity);
+}
+function updatePlan() {
+  const pack = chosenPack();
+  form.querySelectorAll<HTMLElement>("[data-card-index]").forEach((row, index) => {
+    row.hidden = index >= pack.quantity;
+    row.querySelector("select")!.disabled = row.hidden;
+  });
 }
 function chosenCompanion() {
   const value = new FormData(form).get("companion");
@@ -44,26 +59,30 @@ if (isCompanionId(params.get("compagnon")))
   form.querySelector<HTMLInputElement>(
     `input[name="companion"][value="${params.get("compagnon")}"]`,
   )!.checked = true;
-if (isBookId(params.get("aventure")))
-  form.querySelector<HTMLInputElement>(
-    `input[value="${params.get("aventure")}"]`,
-  )!.checked = true;
+if (isAdventureId(params.get("aventure")))
+  adventureSelects[0].value = params.get("aventure")!;
+const initialQuantity = params.get("cartes");
+if (initialQuantity && /^[1-5]$/.test(initialQuantity))
+  form.querySelector<HTMLInputElement>(`input[name="quantity"][value="${initialQuantity}"]`)!.checked = true;
+updatePlan();
 if (params.get("annule") === "1")
   document.querySelector<HTMLElement>("#cancel-notice")!.hidden = false;
 function summary() {
-  const book = books[chosenBook()];
-  document.querySelector<HTMLImageElement>("#summary-image")!.src = book.image;
+  updatePlan();
+  const pack = chosenPack();
   const companion = chosenCompanion();
+  const preview = adventurePreview(selectedAdventures()[0], companion);
+  const image = document.querySelector<HTMLImageElement>("#summary-image")!;
+  if (image.getAttribute("src") !== preview.image) image.src = preview.image;
+  image.alt = preview.alt;
   document.querySelector("#summary-title")!.textContent = storyTitle(
-    chosenBook(),
+    selectedAdventures()[0],
     companion,
   );
   document.querySelector("#companion-photo-label")!.textContent =
     companion === "doudou" ? "La photo de son doudou" : "La photo de sa tétine";
   document.querySelector("#summary-caption")!.textContent =
-    companion === "doudou"
-      ? "DÉCOR ILLUSTRATIF · VOTRE DOUDOU SERA LE HÉROS"
-      : "EXEMPLE ILLUSTRÉ AVEC TÉTINE";
+    preview.caption;
   if (!field("pacifierPhoto").files?.length)
     field("pacifierPhoto")
       .closest(".upload-zone")!
@@ -72,13 +91,25 @@ function summary() {
   const child = field("childName").value.trim();
   document.querySelector("#summary-child")!.textContent = child
     ? `Une histoire pour ${child}`
-    : "L’histoire de son compagnon";
+    : "Des nouvelles de son compagnon";
+  document.querySelector("#summary-quantity")!.textContent = `${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} × ${formatPrice(pack.unitCents)}`;
+  document.querySelector("#summary-subtotal")!.textContent = formatPrice(pack.totalCents);
+  document.querySelector("#summary-total")!.textContent = formatPrice(pack.totalCents);
+  document.querySelector("#summary-cadence")!.textContent = pack.quantity === 1 ? "Un envoi postal" : `${pack.quantity} envois · Une carte tous les 7 jours`;
+  if (step === 2) updatePaymentLabel();
 }
 function review() {
+  const pack = chosenPack();
+  const list = document.querySelector("#review-plan")!;
+  list.replaceChildren(...selectedAdventures().map((id, index) => {
+    const item = document.createElement("li");
+    item.textContent = `Carte ${index + 1} · ${dispatchLabel(index)} · ${adventures[id].short}`;
+    return item;
+  }));
   document.querySelector("#review-book")!.textContent = storyTitle(
-    chosenBook(),
+    selectedAdventures()[0],
     chosenCompanion(),
-  );
+  ) + ` · ${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} · ${formatPrice(pack.totalCents)}`;
   document.querySelector("#review-child")!.textContent =
     `Pour ${field("childName").value.trim()}`;
   document.querySelector("#review-companion")!.textContent =
@@ -89,13 +120,17 @@ function review() {
   document.querySelector("#review-email")!.textContent = field("email").value;
   const photos = document.querySelector("#review-photos")!;
   photos.replaceChildren();
-  for (const [name, url] of objectUrls) {
+  if (photoUrl) {
     const img = document.createElement("img");
-    img.src = url;
-    img.alt =
-      name === "pacifierPhoto" ? "Son compagnon" : "Portrait de votre enfant";
+    img.src = photoUrl;
+    img.alt = "Son compagnon";
     photos.appendChild(img);
   }
+}
+function updatePaymentLabel() {
+  const price = formatPrice(chosenPack().totalCents);
+  next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester le paiement Stripe · ${price} →` : `Payer ${price} avec Stripe →`;
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration ne déclenche aucun paiement ni envoi postal." : `Paiement unique de ${price}. Aucun abonnement. Une carte expédiée tous les 7 jours à partir du premier envoi.`;
 }
 function go(index: number) {
   step = index;
@@ -106,14 +141,8 @@ function go(index: number) {
   });
   previous.hidden = index === 0;
   error.hidden = true;
-  next.textContent =
-    index === 2
-      ? mode === "demo"
-        ? "Terminer la démonstration →"
-        : mode === "test"
-          ? "Tester le paiement Stripe →"
-          : `Payer ${PRICE_LABEL} avec Stripe →`
-      : "Continuer →";
+  if (index === 2) updatePaymentLabel();
+  else next.textContent = "Continuer →";
   if (index === 2) review();
   panels[index]
     .querySelector<HTMLElement>("h2")!
@@ -148,15 +177,15 @@ form.addEventListener("input", () => {
   summary();
   if (!busy) attemptId = newAttemptId();
 });
-for (const name of ["pacifierPhoto", "childPhoto"]) {
-  const input = field(name);
+{
+  const input = field("pacifierPhoto");
   const zone = input.closest<HTMLElement>(".upload-zone")!;
   const message = document.querySelector<HTMLElement>(
-    name === "pacifierPhoto" ? "#pacifier-error" : "#child-error",
+    "#pacifier-error",
   )!;
   input.addEventListener("change", () => {
-    if (objectUrls.has(name)) URL.revokeObjectURL(objectUrls.get(name)!);
-    objectUrls.delete(name);
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = undefined;
     const image = zone.querySelector<HTMLImageElement>(".upload-preview")!;
     image.hidden = true;
     image.removeAttribute("src");
@@ -176,24 +205,15 @@ for (const name of ["pacifierPhoto", "childPhoto"]) {
       return;
     }
     if (file) {
-      const url = URL.createObjectURL(file);
-      objectUrls.set(name, url);
-      image.src = url;
+      photoUrl = URL.createObjectURL(file);
+      image.src = photoUrl;
       image.hidden = false;
       zone.querySelector(".upload-title")!.textContent = file.name;
     } else
       zone.querySelector(".upload-title")!.textContent =
-        name === "pacifierPhoto"
-          ? `Choisir une photo de ${companions[chosenCompanion()].character}`
-          : "Ajouter son portrait";
-    document.querySelector<HTMLButtonElement>("#remove-child")!.hidden =
-      !field("childPhoto").files?.length;
+        `Choisir une photo de ${companions[chosenCompanion()].character}`;
   });
 }
-document.querySelector("#remove-child")!.addEventListener("click", () => {
-  field("childPhoto").value = "";
-  field("childPhoto").dispatchEvent(new Event("change"));
-});
 previous.addEventListener("click", () => go(step - 1));
 document
   .querySelectorAll<HTMLButtonElement>("[data-edit]")
@@ -260,7 +280,7 @@ form.addEventListener("submit", async (event) => {
   }
 });
 window.addEventListener("pagehide", () => {
-  for (const url of objectUrls.values()) URL.revokeObjectURL(url);
+  if (photoUrl) URL.revokeObjectURL(photoUrl);
 });
 summary();
 async function initialize() {
@@ -280,11 +300,11 @@ async function initialize() {
       modeNotice.textContent =
         mode === "test"
           ? "Mode test Stripe · Utilisez des données fictives et une carte de test. Aucun débit réel."
-          : "Votre livre sera créé à partir des informations ci-dessous.";
+          : "Vos cartes seront créées à partir des informations ci-dessous.";
       document.querySelector("#payment-note")!.textContent =
         mode === "test"
           ? "Vous serez redirigé vers Stripe en mode test. Aucune somme ne sera débitée."
-          : `Vous serez redirigé vers Stripe pour régler ${PRICE_LABEL}. Vos informations bancaires ne transitent pas par notre site.`;
+          : `Vous serez redirigé vers Stripe pour régler ${formatPrice(chosenPack().totalCents)}. Vos informations bancaires ne transitent pas par notre site.`;
       next.disabled = false;
     } else {
       modeNotice.textContent =

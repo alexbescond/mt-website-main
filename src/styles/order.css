@@ -259,22 +259,11 @@ legend {
   object-fit: contain;
   background: white;
 }
-.upload-compact {
-  min-height: 125px;
-}
 .field-error {
   display: block;
   font-size: 11px;
   color: #a04130;
   margin-top: 7px;
-}
-.remove-photo {
-  background: none;
-  border: 0;
-  font-size: 11px;
-  text-decoration: underline;
-  color: var(--coral);
-  padding: 7px 0;
 }
 .checkbox-field {
   display: flex;
@@ -332,7 +321,8 @@ legend {
   position: relative;
 }
 .summary-photo img {
-  height: 220px;
+  height: auto;
+  aspect-ratio: 3 / 2;
   width: 100%;
 }
 .summary-photo > span {
@@ -497,15 +487,25 @@ legend {
   }
   .order-summary {
     position: static;
-    display: grid;
-    grid-template-columns: 120px 1fr;
+    display: block;
+  }
+  .summary-photo {
+    padding: 20px 20px 0;
   }
   .summary-photo img {
-    height: 100%;
-    object-position: 45% center;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-position: center;
+    border: 7px solid var(--white);
+    transform: rotate(-2deg);
   }
   .summary-photo > span {
-    display: none;
+    display: block;
+    position: static;
+    margin-top: 10px;
+    font-size: 8px;
+    max-width: 100%;
   }
   .summary-body {
     padding: 20px;

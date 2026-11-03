@@ -1,4 +1,4 @@
-import { isBookId, isCompanionId } from "./catalog";
+import { isAdventureId, isCompanionId, getCardPack } from "./catalog";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -50,8 +50,13 @@ function value(data: FormData, name: string, max: number, required = true) {
   return text;
 }
 export function validateOrder(data: FormData) {
-  const book = value(data, "book", 20);
-  if (!isBookId(book)) throw new InputError("Choisissez une aventure.");
+  const quantityValue = value(data, "quantity", 1);
+  if (!/^[1-5]$/.test(quantityValue)) throw new InputError("Choisissez de 1 à 5 cartes.");
+  const quantity = Number(quantityValue);
+  const cardAdventures = data.getAll("adventure");
+  if (cardAdventures.length !== quantity || !cardAdventures.every(isAdventureId))
+    throw new InputError("Choisissez une aventure pour chaque carte.");
+  const pack = getCardPack(quantity);
   const companion = value(data, "companion", 10);
   if (!isCompanionId(companion))
     throw new InputError("Choisissez un doudou ou une tétine.");
@@ -74,10 +79,13 @@ export function validateOrder(data: FormData) {
       "La livraison est disponible en France métropolitaine.",
     );
   if (data.get("photoConsent") !== "on" || data.get("termsConsent") !== "on")
-    throw new InputError("Votre accord est nécessaire pour préparer ce livre.");
+    throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
     attemptId,
-    book,
+    quantity,
+    cardAdventures,
+    unitPriceCents: pack.unitCents,
+    amountCents: pack.totalCents,
     companion,
     companionName,
     email,
