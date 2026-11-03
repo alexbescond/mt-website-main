@@ -27,7 +27,7 @@ test("order reaches review without collecting contact details or premature error
   await expect(page).toHaveURL(/confirmation\?demo=1/);
 });
 
-test("Stripe receives personalization only and checkout can be retried after an error", async ({ page }) => {
+test("checkout submits personalization only and checkout can be retried after an error", async ({ page }) => {
   await page.route("**/api/config", route => route.fulfill({ json: { mode: "test", available: true } }));
   let attempts = 0;
   const bodies: string[] = [];

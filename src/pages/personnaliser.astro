@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import { adventures, companions, dispatchLabel } from "../lib/catalog";
+import { adventures, companions, dispatchLabel, TOGETHER_DISCOUNT_CENTS, formatPrice } from "../lib/catalog";
 import CardPacks from "../components/CardPacks.astro";
 import "../styles/order.css";
 ---
@@ -15,7 +15,7 @@ import "../styles/order.css";
         <br />
         de <em>son compagnon.</em>
       </h1>
-      <p>De 1 à 5 cartes, une aventure à découvrir chaque semaine.</p>
+      <p>De 1 à 5 cartes, à recevoir chaque semaine ou toutes ensemble.</p>
     </div>
     <div id="mode-notice" class="notice" role="status">
       Chargement du parcours…
@@ -81,16 +81,30 @@ import "../styles/order.css";
             <CardPacks selectable />
             <p class="form-intro">Un paiement unique. Frais de port inclus en France métropolitaine. Aucun abonnement.</p>
           </fieldset>
+          <fieldset id="delivery-options" class="delivery-field">
+            <legend>À quel rythme recevoir ses cartes ?</legend>
+            <div class="delivery-options">
+              <label class="delivery-option">
+                <input type="radio" name="deliveryMode" value="weekly" checked required />
+                <span><strong>Une carte tous les 7 jours</strong><small>Un petit rendez-vous chaque semaine, à partir du premier envoi.</small><b id="weekly-price"></b></span>
+              </label>
+              <label class="delivery-option">
+                <input type="radio" name="deliveryMode" value="together" required />
+                <span><strong>Toutes les cartes en une fois</strong><small>Un seul envoi, puis vous les découvrez à votre rythme.</small><b>−{formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte</b><small id="together-price"></small></span>
+              </label>
+            </div>
+          </fieldset>
+          <p id="single-delivery-note" class="form-intro">Une seule carte, un seul envoi. La remise pour envoi groupé est disponible à partir de 2 cartes.</p>
           <fieldset class="destination-field">
             <legend>Ses aventures, dans l’ordre des envois</legend>
-            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Après le premier envoi, les suivants sont espacés de 7 jours.</p>
+            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Choisissez le rythme des envois ci-dessus.</p>
             {[0, 1, 2, 3, 4].map((index) => (
               <label class="field adventure-field" data-card-index={index} hidden={index > 0}>
-                {index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index)}`}
+                <span data-adventure-label={index}>{index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index)}`}</span>
                 <select id={`adventure-${index + 1}`} name="adventure" required disabled={index > 0} aria-describedby="adventure-help">
                   {Object.entries(adventures).map(([id, item], adventureIndex) => <option value={id} selected={adventureIndex === index}>{item.short}</option>)}
                 </select>
-                {index === 0 && <small>Carte 1 · Premier envoi</small>}
+                {index === 0 && <small id="first-card-timing">Carte 1 · Premier envoi</small>}
               </label>
             ))}
           </fieldset>
@@ -184,6 +198,7 @@ import "../styles/order.css";
             <div>
               <h3>La livraison</h3>
             </div>
+            <p id="review-delivery"></p>
             <p>Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.</p>
             <p>Frais de port inclus en France métropolitaine. La même adresse sera utilisée pour toutes les cartes.</p>
           </div>
@@ -262,6 +277,9 @@ import "../styles/order.css";
           <div class="summary-line">
             <span id="summary-quantity">1 carte × 7,00 €</span>
             <span id="summary-subtotal">7,00 €</span>
+          </div>
+          <div class="summary-line summary-discount" id="summary-discount-row" hidden>
+            <span>Remise envoi groupé</span><span id="summary-discount"></span>
           </div>
           <div class="summary-line">
             <span>Livraison</span>

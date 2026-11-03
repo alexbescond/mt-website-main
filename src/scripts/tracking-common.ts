@@ -34,7 +34,7 @@ export function demoOrder(reset = false): AdminOrder {
   }
   const today = parisDate();
   return {
-    id: "demo", reference: "DEMO2026", companion: "doudou", companionName: "Lapinou", quantity: 3,
+    id: "demo", reference: "DEMO2026", companion: "doudou", companionName: "Lapinou", quantity: 3, deliveryMode: "weekly",
     paidAt: Date.now() - 10 * 86400000, parent: "Alex Martin", child: "Camille", email: "parent@example.com",
     address: "Alex Martin\n12 rue des Nuages\n75001 Paris\nFrance", notes: "Un petit coucou pour Camille.", hasPhoto: false, notifications: [],
     cards: [

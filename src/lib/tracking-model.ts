@@ -1,4 +1,4 @@
-import { adventurePreview, adventures, isAdventureId, type CompanionId } from "./catalog";
+import { adventurePreview, adventures, isAdventureId, type CompanionId, type DeliveryMode } from "./catalog";
 
 export const cardStates = {
   queued: "À venir",
@@ -20,6 +20,7 @@ export interface TrackingOrder {
   companion: CompanionId;
   companionName: string;
   quantity: number;
+  deliveryMode: DeliveryMode;
   paidAt: number;
   deliveryStatus?: "pending" | "ready" | "needs_review";
   cards: TrackingCard[];

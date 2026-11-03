@@ -35,16 +35,30 @@ test("operator can prepare and dispatch a card and see the same update as the pa
   await page.goto("/admin?demo=1");
   await expect(page.locator(".admin-order")).toHaveCount(1);
   await page.getByRole("button", { name: "À expédier aujourd’hui" }).click();
-  await page.getByRole("button", { name: "Marquer comme prête" }).click();
-  await expect(page.locator(".admin-card").nth(1)).toContainText("Prête à partir");
-  await page.getByRole("button", { name: "Marquer comme expédiée" }).click();
+  const status = page.getByRole("combobox", { name: /Statut de la carte 2/ });
+  await status.selectOption("ready");
+  await expect(status).toHaveValue("ready");
+  await status.selectOption("sent");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Annuler", exact: true }).click();
-  await expect(page.locator(".admin-card").nth(1)).toContainText("Prête à partir");
-  await page.getByRole("button", { name: "Marquer comme expédiée" }).click();
+  await expect(status).toHaveValue("ready");
+  await status.selectOption("sent");
   await page.getByRole("button", { name: "Confirmer l’envoi" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
   await page.getByRole("button", { name: "Toutes les commandes" }).click();
+  await status.selectOption("preparing");
+  await expect(status).toHaveValue("preparing");
+  await expect(page.locator(".admin-card").nth(1)).not.toContainText("Expédiée le");
+  await status.selectOption("queued");
+  await expect(status).toHaveValue("queued");
+  await page.reload();
+  await expect(status).toHaveValue("queued");
+  await status.selectOption("sent");
+  await page.keyboard.press("Escape");
+  await expect(status).toHaveValue("queued");
+  await status.selectOption("sent");
+  await page.getByRole("button", { name: "Confirmer l’envoi" }).click();
+  await expect(status).toHaveValue("sent");
   await expect(page.locator(".admin-card").nth(1)).toContainText("Expédiée le");
   await page.locator(".admin-order summary").click();
   await expect(page.locator(".admin-customer")).toContainText("12 rue des Nuages");
@@ -55,4 +69,31 @@ test("operator can prepare and dispatch a card and see the same update as the pa
   await expect(page.locator("#tracking-cards > li").nth(1)).toContainText("Expédiée le");
   expect(posts).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("grouped delivery keeps dropdown preparation, dispatch and rollback consistent", async ({ page }) => {
+  await page.goto("/admin?demo=1");
+  await expect(page.locator(".admin-order")).toHaveCount(1);
+  await page.evaluate(() => {
+    const order = JSON.parse(sessionStorage.getItem("mt-tracking-demo-v1")!);
+    order.deliveryMode = "together";
+    order.cards.forEach((card: { state: string; sent_date: string | null }) => { card.state = "queued"; card.sent_date = null; });
+    sessionStorage.setItem("mt-tracking-demo-v1", JSON.stringify(order));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Toutes les commandes" }).click();
+  const statuses = page.getByRole("combobox", { name: /Statut de la carte/ });
+  await expect(statuses.first().locator('option[value="sent"]')).toHaveJSProperty("disabled", true);
+  for (let index = 0; index < 3; index++) {
+    await statuses.nth(index).selectOption("ready");
+    await expect(statuses.nth(index)).toBeEnabled();
+  }
+  await statuses.nth(1).selectOption("sent");
+  await expect(page.locator("#dispatch-card-title")).toContainText("Envoi groupé");
+  await expect(page.locator("#dispatch-explanation")).toContainText("Toutes les cartes");
+  await page.getByRole("button", { name: "Confirmer l’envoi" }).click();
+  for (let index = 0; index < 3; index++) await expect(statuses.nth(index)).toHaveValue("sent");
+  await statuses.nth(1).selectOption("preparing");
+  for (let index = 0; index < 3; index++) await expect(statuses.nth(index)).toHaveValue("preparing");
+  await expect(page.locator(".admin-order")).not.toContainText("Expédiée le");
 });

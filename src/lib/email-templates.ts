@@ -1,4 +1,4 @@
-import { SEND_INTERVAL_DAYS, SITE_NAME } from "./catalog";
+import { SEND_INTERVAL_DAYS, SITE_NAME, type DeliveryMode } from "./catalog";
 import { displayDate } from "./tracking-model";
 
 function escapeHtml(text: string) {
@@ -19,9 +19,21 @@ interface EmailCopy {
 }
 
 // Parents read these emails: keep the tone warm but plain, without diminutives or travel metaphors.
-function notificationCopy(kind: string, reference: string, position?: number, date?: string): EmailCopy {
+function notificationCopy(kind: string, reference: string, position?: number, date?: string, deliveryMode: DeliveryMode = "weekly"): EmailCopy {
   if (kind === "shipped") {
     const sentOn = displayDate(date!);
+    if (deliveryMode === "together") return {
+      subject: `Vos cartes ont été expédiées — commande ${reference}`,
+      preview: `Toutes vos cartes ont été expédiées ensemble le ${sentOn}.`,
+      eyebrow: "CARTES EXPÉDIÉES",
+      title: "Toutes vos cartes",
+      accent: "sont en route.",
+      paragraphs: [`Nous avons expédié toutes vos cartes dans un seul envoi le ${sentOn}, à l’adresse indiquée lors de votre commande. Le délai de réception dépend de l’acheminement postal.`],
+      detailTitle: "Votre envoi groupé",
+      detail: "Vous pourrez découvrir les cartes ensemble ou les offrir une à une, au rythme de votre enfant.",
+      action: "Suivre mes cartes",
+      closing: "Nous espérons qu’elles feront plaisir à votre enfant.",
+    };
     return {
       subject: `Carte ${position} expédiée — commande ${reference}`,
       preview: `Expédiée le ${sentOn}, à l’adresse indiquée lors de votre commande.`,
@@ -66,7 +78,7 @@ function notificationCopy(kind: string, reference: string, position?: number, da
       "Nous allons maintenant créer les cartes de votre enfant à partir de la photo que vous nous avez confiée et des aventures choisies. Chacune comportera une illustration et un message à son prénom.",
     ],
     detailTitle: "Les prochaines étapes",
-    detail: `Nous commençons par préparer la première carte. Si vous en avez commandé plusieurs, les suivantes seront expédiées à ${SEND_INTERVAL_DAYS} jours d’intervalle. Vous recevrez un e-mail à chaque expédition ; le délai de réception dépend ensuite de l’acheminement postal.`,
+    detail: deliveryMode === "together" ? "Nous préparons toutes vos cartes pour les expédier ensemble, dans un seul envoi. Vous recevrez un e-mail au moment de l’expédition ; le délai de réception dépend ensuite de l’acheminement postal." : `Nous commençons par préparer la première carte. Si vous en avez commandé plusieurs, les suivantes seront expédiées à ${SEND_INTERVAL_DAYS} jours d’intervalle. Vous recevrez un e-mail à chaque expédition ; le délai de réception dépend ensuite de l’acheminement postal.`,
     action: "Suivre mes cartes",
     closing: "Nous espérons que ces cartes deviendront de beaux souvenirs de famille.",
   };
@@ -74,8 +86,8 @@ function notificationCopy(kind: string, reference: string, position?: number, da
 
 // Use the site's paper, sage and terracotta palette, with email-safe system fonts.
 // All essential content stays readable without images, external styles or web fonts.
-export function notificationMessage(kind: string, reference: string, link: string, position?: number, date?: string) {
-  const copy = notificationCopy(kind, reference, position, date);
+export function notificationMessage(kind: string, reference: string, link: string, position?: number, date?: string, deliveryMode: DeliveryMode = "weekly") {
+  const copy = notificationCopy(kind, reference, position, date, deliveryMode);
   const origin = new URL(link).origin;
   const renewalLink = origin + "/suivi";
   const questionsLink = origin + "/#questions";

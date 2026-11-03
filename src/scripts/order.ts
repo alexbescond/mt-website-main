@@ -5,7 +5,10 @@ import {
   isAdventureId,
   isCompanionId,
   storyTitle,
-  getCardPack,
+  getOrderPrice,
+  deliveryLabel,
+  isDeliveryMode,
+  type DeliveryMode,
   formatPrice,
   dispatchLabel,
   type AdventureId,
@@ -41,9 +44,12 @@ const adventureSelects = [...form.querySelectorAll("select")].filter(select => s
 function selectedAdventures(): AdventureId[] {
   return adventureSelects.filter(select => !select.disabled).map((select) => isAdventureId(select.value) ? select.value : "tropiques");
 }
+function chosenDelivery(): DeliveryMode {
+  return new FormData(form).get("deliveryMode") === "together" && Number(new FormData(form).get("quantity")) > 1 ? "together" : "weekly";
+}
 function chosenPack() {
   const quantity = Number(new FormData(form).get("quantity"));
-  return getCardPack(quantity);
+  return getOrderPrice(quantity, chosenDelivery());
 }
 function updatePlan() {
   const pack = chosenPack();
@@ -51,6 +57,18 @@ function updatePlan() {
     row.hidden = index >= pack.quantity;
     row.querySelector("select")!.disabled = row.hidden;
   });
+  const single = pack.quantity === 1;
+  document.querySelector<HTMLElement>("#delivery-options")!.hidden = single;
+  document.querySelector<HTMLElement>("#single-delivery-note")!.hidden = !single;
+  if (single) form.querySelector<HTMLInputElement>('input[name="deliveryMode"][value="weekly"]')!.checked = true;
+  const weekly = getOrderPrice(pack.quantity);
+  const together = getOrderPrice(pack.quantity, "together");
+  document.querySelector("#weekly-price")!.textContent = `${formatPrice(weekly.totalCents)} au total`;
+  document.querySelector("#together-price")!.textContent = `${formatPrice(together.totalCents)} au total · ${formatPrice(together.discountCents)} économisés`;
+  form.querySelectorAll<HTMLElement>("[data-adventure-label]").forEach((label, index) => {
+    label.textContent = index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index, chosenDelivery())}`;
+  });
+  document.querySelector("#first-card-timing")!.textContent = `Carte 1 · ${dispatchLabel(0, chosenDelivery())}`;
   updateAdventureOptions();
 }
 function updateAdventureOptions() {
@@ -93,6 +111,8 @@ if (isAdventureId(params.get("aventure")))
 const initialQuantity = params.get("cartes");
 if (initialQuantity && /^[1-5]$/.test(initialQuantity))
   form.querySelector<HTMLInputElement>(`input[name="quantity"][value="${initialQuantity}"]`)!.checked = true;
+if (isDeliveryMode(params.get("envoi")))
+  form.querySelector<HTMLInputElement>(`input[name="deliveryMode"][value="${params.get("envoi")}"]`)!.checked = true;
 updatePlan();
 if (params.get("annule") === "1")
   document.querySelector<HTMLElement>("#cancel-notice")!.hidden = false;
@@ -122,14 +142,16 @@ function summary() {
   document.querySelector("#summary-child")!.textContent = child
     ? `Une histoire pour ${child}`
     : "Des nouvelles de son compagnon";
-  document.querySelector("#summary-quantity")!.textContent = `${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} × ${formatPrice(pack.unitCents)}`;
-  document.querySelector("#summary-subtotal")!.textContent = formatPrice(pack.totalCents);
+  document.querySelector("#summary-quantity")!.textContent = `${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} × ${formatPrice(getOrderPrice(pack.quantity).unitCents)}`;
+  document.querySelector("#summary-subtotal")!.textContent = formatPrice(pack.baseTotalCents);
+  document.querySelector<HTMLElement>("#summary-discount-row")!.hidden = pack.discountCents === 0;
+  document.querySelector("#summary-discount")!.textContent = `−${formatPrice(pack.discountCents)}`;
   document.querySelector("#summary-total")!.textContent = formatPrice(pack.totalCents);
-  document.querySelector("#summary-cadence")!.textContent = pack.quantity === 1 ? "Un envoi postal" : `${pack.quantity} envois · Une carte tous les 7 jours`;
+  document.querySelector("#summary-cadence")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
   if (step === 1) updatePaymentLabel();
 }
 function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
-  const key = `${companion}:${itinerary.join(",")}`;
+  const key = `${companion}:${chosenDelivery()}:${itinerary.join(",")}`;
   if (key === previewKey) return;
   previewKey = key;
   const multiple = itinerary.length > 1;
@@ -150,7 +172,7 @@ function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
     const title = document.createElement("strong");
     title.textContent = adventures[adventure].short;
     const timing = document.createElement("small");
-    timing.textContent = dispatchLabel(index);
+    timing.textContent = dispatchLabel(index, chosenDelivery());
     for (const element of [image, number, title, timing]) card.appendChild(element);
     return card;
   }) : []));
@@ -162,7 +184,7 @@ function review() {
   const list = document.querySelector("#review-plan")!;
   list.replaceChildren(...selectedAdventures().map((id, index) => {
     const item = document.createElement("li");
-    item.textContent = `Carte ${index + 1} · ${dispatchLabel(index)} · ${adventures[id].short}`;
+    item.textContent = `Carte ${index + 1} · ${dispatchLabel(index, chosenDelivery())} · ${adventures[id].short}`;
     return item;
   }));
   document.querySelector("#review-book")!.textContent = storyTitle(
@@ -174,6 +196,7 @@ function review() {
   document.querySelector("#review-companion")!.textContent =
     `${companions[chosenCompanion()].label}${field("companionName").value.trim() ? ` · ${field("companionName").value.trim()}` : ""}`;
   document.querySelector("#review-notes")!.textContent = field("notes").value;
+  document.querySelector("#review-delivery")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
   const photos = document.querySelector("#review-photos")!;
   photos.replaceChildren();
   if (photoUrl) {

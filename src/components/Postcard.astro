@@ -1,5 +1,6 @@
 ---
 import { adventures, type AdventureId } from "../lib/catalog";
+import PostcardStamp from "./PostcardStamp.astro";
 interface Props { adventure: AdventureId; }
 const { adventure } = Astro.props;
 const item = adventures[adventure];
@@ -10,8 +11,7 @@ const item = adventures[adventure];
     <span>{item.title} <i>Un petit coucou pour toi ♡</i></span>
   </div>
   <div class="postcard-back" aria-hidden="true">
-    <span class="postcard-postmark">LES PETITS<br />VOYAGEURS</span>
     <div class="postcard-message"><strong>Coucou Camille,</strong><p>{adventure === "ski" ? "Aujourd’hui, j’ai fait mes premières traces dans la neige. Je t’envoie un flocon de tendresse !" : "Le soleil me chatouille les pieds. J’ai trouvé un coquillage et j’ai pensé très fort à toi !"}</p><em>Ta Tétine ♡</em></div>
-    <div class="postcard-address"><span class="postcard-stamp">✳</span><strong>Pour Camille</strong><span>À la maison</span><span>Tout près de ton cœur</span></div>
+    <div class="postcard-address"><PostcardStamp adventure={adventure} /><strong>Pour Camille</strong><span>À la maison</span><span>Tout près de ton cœur</span></div>
   </div>
 </div>

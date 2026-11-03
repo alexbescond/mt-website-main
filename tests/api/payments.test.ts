@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
+import deliverySchema from "../../migrations/0005_delivery_mode.sql?raw";
 import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -6,8 +7,8 @@ import baseSchema from "../../migrations/0001_orders.sql?raw";
 import companionSchema from "../../migrations/0002_companions.sql?raw";
 import postcardSchema from "../../migrations/0003_postcards.sql?raw";
 import trackingSchema from "../../migrations/0004_tracking.sql?raw";
-import deliverySchema from "../../migrations/0005_stripe_delivery.sql?raw";
-const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema;
+import stripeDeliverySchema from "../../migrations/0006_stripe_delivery.sql?raw";
+const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema;
 import { api } from "../../src/lib/api";
 import { cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
@@ -549,6 +550,45 @@ it("preserves historical book orders and webhook references during the postcard 
   await env.DB.prepare("INSERT INTO stripe_events VALUES ('evt_old','old','checkout.session.completed',1)").run();
   await apply(postcardSchema);
   await apply(deliverySchema);
+  await apply(stripeDeliverySchema);
   expect(await env.DB.prepare("SELECT * FROM orders WHERE id='old'").first()).toMatchObject({ id: "old", book: "ski", amount_cents: 2990, product_type: "book", status: "paid", stripe_session_id: "cs_old", access_token: "token", pacifier_key: "orders/old/pacifier", companion_name: "Lapinou", first_name: "Alex", last_name: "Exemple", address: "1 rue du Test", recipient_name: "", delivery_status: "ready" });
   expect((await env.DB.prepare("SELECT order_id FROM stripe_events WHERE id='evt_old'").first())?.order_id).toBe("old");
+});
+
+it.each([[2, 525, 1050], [3, 475, 1425], [4, 450, 1800], [5, 425, 2125]])("applies the grouped delivery discount server-side for %i cards", async (quantity, unit, total) => {
+  const fetch = mockStripe("cs_test_together", unit, quantity);
+  const form = payload();
+  form.set("quantity", String(quantity));
+  form.set("deliveryMode", "together");
+  form.set("amountCents", "1");
+  form.delete("adventure");
+  for (const choice of ["safari", "bateau", "pelleteuse", "circuit", "noel"].slice(0, quantity)) form.append("adventure", choice);
+  expect((await api(request(form), bindings)).status).toBe(200);
+  expect(await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(form.get("attemptId")).first())
+    .toMatchObject({ delivery_mode: "together", unit_price_cents: unit, amount_cents: total });
+  const sent = new URLSearchParams(String(fetch.mock.calls[0][1]?.body));
+  expect(sent.get("line_items[0][price_data][product_data][description]")).toContain("un seul envoi");
+  expect(sent.get("cancel_url")).toContain("envoi=together");
+  expect((await webhook(String(form.get("attemptId")), "cs_test_together", { amount: total })).status).toBe(200);
+  expect((await env.DB.prepare("SELECT status FROM orders WHERE id=?").bind(form.get("attemptId")).first())?.status).toBe("paid");
+});
+it("does not discount a single card, even when grouped delivery is submitted", async () => {
+  mockStripe();
+  const form = payload(); form.set("deliveryMode", "together");
+  expect((await api(request(form), bindings)).status).toBe(200);
+  expect(await env.DB.prepare("SELECT delivery_mode,amount_cents FROM orders").first()).toEqual({ delivery_mode: "weekly", amount_cents: 700 });
+});
+it("rejects an invalid delivery mode before creating an order or payment", async () => {
+  const fetch = mockStripe();
+  const form = payload(); form.set("deliveryMode", "free");
+  expect((await api(request(form), bindings)).status).toBe(400);
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM orders").first())?.n).toBe(0);
+});
+it("requires a new checkout attempt when the delivery mode changes", async () => {
+  mockStripe("cs_weekly", 600, 2);
+  const form = payload(); form.set("quantity", "2"); form.append("adventure", "ski");
+  expect((await api(request(form), bindings)).status).toBe(200);
+  form.set("deliveryMode", "together");
+  expect((await api(request(form), bindings)).status).toBe(409);
 });

@@ -1,6 +1,6 @@
 # Les aventures de mon doudou et ma tétine
 
-Site de **cartes postales papier personnalisées** avec le doudou ou la tétine de l’enfant. De 1 à 5 cartes, un paiement unique, une aventure par carte et une expédition tous les 7 jours à partir du premier envoi. Les frais de port en France métropolitaine sont inclus. Photo du compagnon obligatoire, surnom facultatif. Aucune photo de l’enfant n’est demandée ni acceptée pour les nouvelles commandes.
+Site de **cartes postales papier personnalisées** avec le doudou ou la tétine de l’enfant. De 1 à 5 cartes, un paiement unique, une aventure par carte et une expédition tous les 7 jours par défaut, ou toutes les cartes en un seul envoi. Les frais de port en France métropolitaine sont inclus. Photo du compagnon obligatoire, surnom facultatif. Aucune photo de l’enfant n’est demandée ni acceptée pour les nouvelles commandes.
 
 | Cartes | Total | Par carte |
 | --- | --- | --- |
@@ -80,9 +80,9 @@ Voir [DEPLOY.md](DEPLOY.md) pour le déploiement, Stripe et le traitement d’un
 
 La migration `0003_postcards.sql` reconstruit la table `orders` pour retirer la restriction historique aux deux aventures de livres, tout en conservant les commandes, montants, références Stripe, clés photo et index existants. Les anciennes lignes restent `product_type='book'`. Les nouvelles sont `postcards`, avec `card_quantity`, `unit_price_cents`, `card_adventures` (tableau JSON ordonné) et `send_interval_days=7`. La colonne historique `book` conserve la première aventure, uniquement pour compatibilité ; `card_adventures` est la source du programme complet.
 
-La migration `0005_stripe_delivery.sql` ajoute `recipient_name` et `delivery_status`. Le webhook conserve le nom complet reçu de Stripe sans le découper artificiellement ; les anciennes commandes conservent leurs champs prénom/nom et leur adresse. Les coordonnées incomplètes ou hors France métropolitaine placent la livraison en vérification sans perdre la trace du paiement. Voir [le fonctionnement Stripe](DEPLOY.md#stripe-en-test).
+La migration `0006_stripe_delivery.sql` ajoute `recipient_name` et `delivery_status`. Le webhook conserve le nom complet reçu de Stripe sans le découper artificiellement ; les anciennes commandes conservent leurs champs prénom/nom et leur adresse. Les coordonnées incomplètes ou hors France métropolitaine placent la livraison en vérification sans perdre la trace du paiement. Voir [le fonctionnement Stripe](DEPLOY.md#stripe-en-test).
 
-Le nom `pacifierPhoto` et la clé R2 `pacifier` sont conservés pour les deux types de compagnons. Ni prénom de l’enfant, surnom du compagnon ni photo ne sont transmis à Stripe. Le serveur impose la quantité de 1 à 5, le nombre exact d’aventures et le tarif correspondant ; le webhook vérifie le total enregistré. Les expéditions sont espacées de 7 jours après le premier départ, sans garantir des dates de réception identiques aux dates d’expédition.
+Le nom `pacifierPhoto` et la clé R2 `pacifier` sont conservés pour les deux types de compagnons. Ni prénom de l’enfant, surnom du compagnon ni photo ne sont transmis à Stripe. Le serveur impose la quantité de 1 à 5, le nombre exact d’aventures et le tarif correspondant ; le webhook vérifie le total enregistré. Les expéditions sont espacées de 7 jours après le premier départ par défaut, ou regroupées selon le choix du client, sans garantir des dates de réception identiques aux dates d’expédition.
 
 Les fichiers de `conductor-handoff/` sont une archive de l’ancienne refonte livres et ne décrivent plus l’offre actuelle. La configuration et les environnements actuels sont décrits dans [DEPLOY.md](DEPLOY.md).
 
@@ -91,3 +91,9 @@ Les fichiers de `conductor-handoff/` sont une archive de l’ancienne refonte li
 Au 2 novembre 2026, [La Poste](https://www.laposte.fr/tarif-lettre-verte) affiche 1,52 € pour une Lettre verte jusqu’à 20 g (1,67 € annoncé pour 2027), et [Stripe](https://stripe.com/fr/pricing) 1,5 % + 0,25 € pour une carte standard de l’EEE. À 25 € le lot, cinq affranchissements 2026 et un paiement laissent environ **16,78 €** avant impression, création, manipulation, éventuelle TVA, acquisition client et marge ; ce montant n’est pas un bénéfice.
 
 Exemple de travail, à remplacer par un devis : 0,80 € d’impression + 0,20 € de création numérique + 0,70 € de préparation par carte, en plus du timbre. Cela laisserait environ 8,28 € par lot de 5 avant fiscalité, acquisition client, frais fixes et incidents. Ces coûts sont des hypothèses, pas des tarifs fournisseur vérifiés. La cinquième carte ajoute 4 € de chiffre d’affaires par rapport au lot de 4 (21 €), au lieu de seulement 3 € avec un lot de 4 à 22 €. Le coût marginal doit rester inférieur à 4 €, frais Stripe supplémentaires compris. Un traitement très manuel peut rendre cette remise trop forte ; valider le coût de chaque illustration et le temps réel avant l’ouverture.
+
+### Choix de livraison
+
+`deliveryMode` vaut `weekly` par défaut ou `together` pour un envoi groupé à partir de 2 cartes. Les tarifs des lots sont conservés ; la remise supplémentaire est définie par `TOGETHER_DISCOUNT_CENTS` dans `src/lib/catalog.ts` (75 centimes par carte). Le serveur calcule le prix et normalise une carte seule en envoi hebdomadaire sans remise.
+
+Appliquer `migrations/0005_delivery_mode.sql` avant de déployer cette version. Les anciennes commandes restent hebdomadaires. Pour un envoi groupé, le planning donne la même date à chaque carte ; une fois toutes les cartes prêtes, l’opérateur confirme leur expédition en une seule action et une seule notification est préparée.
