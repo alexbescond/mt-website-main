@@ -2,8 +2,9 @@ name: e2e
 
 on:
   pull_request:
+    branches: [main, prod]
   push:
-    branches: [main]
+    branches: [main, prod]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,8 @@ permissions:
 
 concurrency:
   group: e2e-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer PR revision can replace its tests, but never interrupt a migration/deployment.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e:
@@ -21,6 +23,16 @@ jobs:
       CI: 'true'
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'
     steps:
+      - name: Require production promotions from main
+        if: github.event_name == 'pull_request' && github.base_ref == 'prod'
+        env:
+          SOURCE_BRANCH: ${{ github.head_ref }}
+          SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [[ "$SOURCE_BRANCH" != "main" || "$SOURCE_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
+            echo '::error::Production releases must be promoted through a main → prod pull request in this repository.'
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -41,24 +53,53 @@ jobs:
 
   deploy:
     needs: e2e
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.CLOUDFLARE_DEPLOY_ENABLED == 'true'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/prod')
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: production
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'staging' || 'production' }}
+      url: ${{ github.ref == 'refs/heads/main' && 'https://mt-website-main.alexandre-bescond.workers.dev' || 'https://les-aventures-de-doudou-tetine.com' }}
     concurrency:
-      group: cloudflare-production
+      group: cloudflare-${{ github.ref == 'refs/heads/main' && 'staging' || 'production' }}
       cancel-in-progress: false
     env:
+      DEPLOY_TARGET: ${{ github.ref == 'refs/heads/main' && 'staging' || 'production' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Check deployment credentials
+        run: |
+          if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "::error::Configure CLOUDFLARE_API_TOKEN (secret) and CLOUDFLARE_ACCOUNT_ID (variable) in the $DEPLOY_TARGET GitHub environment."
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: npm run check:deploy
-      - run: npm run db:migrate:remote
+      - name: Build selected environment
+        run: |
+          case "$DEPLOY_TARGET" in
+            staging) npm run build ;;
+            production) npm run build:production ;;
+            *) exit 1 ;;
+          esac
+      - run: npm run check:deploy -- "$DEPLOY_TARGET"
+      - name: Apply migrations to selected environment
+        run: |
+          case "$DEPLOY_TARGET" in
+            staging) npm run db:migrate:staging ;;
+            production) npm run db:migrate:remote ;;
+            *) exit 1 ;;
+          esac
       - run: npx wrangler deploy --config dist/server/wrangler.json
+      - name: Record release
+        run: |
+          {
+            echo "### Deployment: $DEPLOY_TARGET"
+            echo "Commit: $GITHUB_SHA"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo 'Cloudflare Access and payment mode are controlled separately from releases.'
+          } >> "$GITHUB_STEP_SUMMARY"

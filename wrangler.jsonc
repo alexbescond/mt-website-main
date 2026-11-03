@@ -8,23 +8,56 @@
   "workers_dev": true,
   "preview_urls": true,
   "upload_source_maps": true,
-  // Attach the custom domain after its Cloudflare zone is ready (see DEPLOY.md).
+  // Default environment is staging. Production is selected at build time.
+  "routes": [],
   "assets": { "binding": "ASSETS", "directory": "./dist/client", "run_worker_first": true },
   "vars": {
-    "SITE_ORIGIN": "https://les-vacances-de-ma-tetine.com",
-    "CHECKOUT_MODE": "demo",
+    "SITE_ORIGIN": "https://mt-website-main.alexandre-bescond.workers.dev",
+    "CHECKOUT_MODE": "test",
     "SITE_INDEXABLE": "false",
-    "LEGAL_APPROVED": "false"
+    "LEGAL_APPROVED": "false",
+    "EMAIL_ENABLED": "false",
+    "EMAIL_FROM": "no-reply@les-aventures-de-doudou-tetine.com",
+    "EMAIL_REPLY_TO": ""
   },
   "d1_databases": [{
     "binding": "DB", "database_name": "mt-orders",
     "database_id": "d7c82687-ed9b-4607-82a7-80fea80e71f7",
     "migrations_dir": "migrations"
   }],
-  // Enable R2 on this account, create the private EU bucket, then add this binding:
-  // "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "mt-private-photos", "jurisdiction": "eu" }],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "mt-private-photos-staging", "jurisdiction": "eu" }],
+  // Notifications use Resend. Store RESEND_API_KEY as a Worker secret (see docs/TRACKING.md).
   "kv_namespaces": [{ "binding": "SESSION", "id": "9f532fb7c2034ef29d5e63881533b225" }],
   "ratelimits": [{ "name": "CHECKOUT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
+  // Staging never sends emails; only photo retention needs a schedule.
   "triggers": { "crons": ["17 3 * * *"] },
-  "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true }
+  "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true },
+  "env": {
+    "production": {
+      "name": "mt-main-production",
+      // Only the custom domain, protected by Cloudflare Access, serves production.
+      "workers_dev": false,
+      "preview_urls": false,
+      // Live order notifications and private-photo retention.
+      "triggers": { "crons": ["17 3 * * *", "*/5 * * * *"] },
+      "routes": [{ "pattern": "les-aventures-de-doudou-tetine.com/*", "zone_name": "les-aventures-de-doudou-tetine.com" }],
+      "vars": {
+        "SITE_ORIGIN": "https://les-aventures-de-doudou-tetine.com",
+        "CHECKOUT_MODE": "live",
+        "SITE_INDEXABLE": "false",
+        "LEGAL_APPROVED": "false",
+        "EMAIL_ENABLED": "true",
+        "EMAIL_FROM": "no-reply@les-aventures-de-doudou-tetine.com",
+        "EMAIL_REPLY_TO": ""
+      },
+      "d1_databases": [{
+        "binding": "DB", "database_name": "mt-orders-production",
+        "database_id": "812fcaec-fe77-40c5-8ac6-363104dbf213",
+        "migrations_dir": "migrations"
+      }],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "mt-private-photos-production", "jurisdiction": "eu" }],
+      "kv_namespaces": [{ "binding": "SESSION", "id": "72e6c73cbf1e400e902d27c8f4bbd53a" }],
+      "ratelimits": [{ "name": "CHECKOUT_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } }]
+    }
+  }
 }

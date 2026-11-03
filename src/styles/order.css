@@ -110,7 +110,7 @@
   outline: 2px solid #7f9a80;
   outline-offset: 1px;
 }
-.field input:user-invalid {
+.form-panel[data-validated="true"] .field input:invalid {
   border-color: #b95541;
 }
 .field input::placeholder,
@@ -143,6 +143,19 @@
   margin-top: 10px;
   margin-bottom: 10px;
 }
+.coupon-box {
+  margin-block: 24px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.coupon-box summary { cursor: pointer; font-size: 13px; font-weight: 550; }
+.coupon-box .field { margin-block: 16px; }
+.coupon-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.coupon-actions .button { padding: 10px 18px; }
+#coupon-message { font-size: 12px; margin: 12px 0 0; }
+#coupon-message:empty { display: none; }
+#coupon-code[aria-invalid="true"] { border-color: #b95541; }
 fieldset {
   margin: 0;
   padding: 0;
@@ -701,3 +714,14 @@ legend {
     font-size: 10px;
   }
 }
+
+.delivery-field { margin: 0 0 28px; }
+.delivery-options { display: grid; gap: 12px; }
+.delivery-option { display: flex; align-items: start; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); cursor: pointer; }
+.delivery-option:has(input:checked) { border-color: var(--coral); box-shadow: inset 0 0 0 1px var(--coral); background: #f5e7da; }
+.delivery-option:focus-within { outline: 2px solid #7f9a80; outline-offset: 3px; }
+.delivery-option input { accent-color: var(--coral); margin: 4px 0 0; }
+.delivery-option strong { display: block; font-family: var(--serif); font-size: 21px; font-weight: 500; }
+.delivery-option small { display: block; font-size: 12px; line-height: 1.6; margin-top: 5px; color: var(--muted); }
+.delivery-option b { display: block; font-size: 13px; margin-top: 10px; color: var(--coral); }
+.summary-discount { color: var(--coral); }

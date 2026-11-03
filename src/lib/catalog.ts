@@ -1,5 +1,15 @@
 export const SITE_NAME = "Les aventures de mon doudou et ma tétine";
 export const SEND_INTERVAL_DAYS = 7;
+// Adjust this single value to change the grouped-delivery discount everywhere.
+export const TOGETHER_DISCOUNT_CENTS = 75;
+export type DeliveryMode = "weekly" | "together";
+export function isDeliveryMode(value: unknown): value is DeliveryMode {
+  return value === "weekly" || value === "together";
+}
+export function deliveryLabel(quantity: number, mode: DeliveryMode) {
+  if (quantity === 1) return "Un envoi postal";
+  return mode === "together" ? "Toutes les cartes dans un seul envoi" : `${quantity} envois · Une carte tous les 7 jours`;
+}
 export const cardPacks = [
   { quantity: 1, unitCents: 700, totalCents: 700, name: "Un petit coucou" },
   { quantity: 2, unitCents: 600, totalCents: 1200, name: "Deux découvertes" },
@@ -11,6 +21,12 @@ export function getCardPack(quantity: number) {
   const pack = cardPacks.find((pack) => pack.quantity === quantity);
   if (!pack) throw new RangeError("Choisissez de 1 à 5 cartes.");
   return pack;
+}
+export function getOrderPrice(quantity: number, deliveryMode: DeliveryMode = "weekly") {
+  const pack = getCardPack(quantity);
+  const discountCents = deliveryMode === "together" && quantity > 1 ? TOGETHER_DISCOUNT_CENTS * quantity : 0;
+  return { ...pack, baseTotalCents: pack.totalCents, discountCents,
+    unitCents: pack.unitCents - discountCents / quantity, totalCents: pack.totalCents - discountCents };
 }
 export function formatPrice(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(cents / 100);
@@ -97,6 +113,7 @@ export function isAdventureId(value: unknown): value is AdventureId {
 export function storyTitle(adventure: AdventureId, companion: CompanionId) {
   return `${companions[companion].character} — ${adventures[adventure].title}`;
 }
-export function dispatchLabel(index: number) {
+export function dispatchLabel(index: number, mode: DeliveryMode = "weekly") {
+  if (mode === "together") return "Envoi groupé";
   return index === 0 ? "Premier envoi" : `+ ${index * SEND_INTERVAL_DAYS} jours`;
 }

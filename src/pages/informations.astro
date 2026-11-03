@@ -1,4 +1,5 @@
 ---
+import { TOGETHER_DISCOUNT_CENTS, formatPrice } from "../lib/catalog";
 import Base from "../layouts/Base.astro";
 ---
 
@@ -7,9 +8,9 @@ import Base from "../layouts/Base.astro";
     <span class="eyebrow">EN TOUTE TRANSPARENCE</span>
     <h1>Les informations utiles.</h1>
     <p class="notice">
-      Site en préparation. Les commandes réelles sont fermées. Les informations
+      Cette page est en cours de rédaction. Les informations
       du vendeur, les caractéristiques définitives des cartes et les conditions de
-      vente seront complétées avant l’ouverture.
+      vente restent à compléter.
     </p>
     <h2 id="mentions">Mentions légales</h2>
     <p>
@@ -31,10 +32,10 @@ import Base from "../layouts/Base.astro";
     </p>
     <p>
       Lors d’une commande ouverte, le prénom de l’enfant, la photo de son compagnon,
-      les coordonnées du parent et l’adresse de livraison seront utilisés pour
+      les coordonnées de la personne qui commande et l’adresse de livraison seront utilisés pour
       personnaliser et expédier les cartes. La photo du compagnon est nécessaire ;
-      aucune photo de l’enfant n’est demandée. Seul un parent ou un représentant
-      légal peut transmettre la photo du compagnon et autoriser son utilisation.
+      aucune photo de l’enfant n’est demandée. La photo du compagnon sert uniquement
+      à créer vos cartes.
     </p>
     <p>
       Les photos sont placées dans un stockage privé Cloudflare R2. Elles ne
@@ -45,7 +46,9 @@ import Base from "../layouts/Base.astro";
       politique définitive.
     </p>
     <p>
-      Le paiement est traité par Stripe. Le site ne reçoit pas vos coordonnées
+      Stripe recueille votre nom, votre e-mail et votre adresse de livraison
+      au moment du paiement, puis les transmet au site pour préparer et suivre
+      vos envois. Le paiement est traité par Stripe. Le site ne reçoit pas vos coordonnées
       bancaires. Un cookie technique, temporaire et sécurisé permet de retrouver
       la confirmation de paiement pendant 24 heures. Aucun outil publicitaire ni
       cookie de mesure d’audience n’est installé.
@@ -65,12 +68,14 @@ import Base from "../layouts/Base.astro";
     </p>
     <p>
       Grille proposée : 1 carte à 7 €, 2 à 12 €, 3 à 16,50 €, 4 à 21 € et 5 à 25 €.
+      Pour 2 cartes ou plus envoyées ensemble, une remise de {formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte s’applique à cette grille.
       Les frais de port en France métropolitaine sont inclus. Paiement unique,
       sans abonnement ni renouvellement automatique.
     </p>
     <p>
-      Les cartes sont prévues pour être expédiées à 7 jours d’intervalle, à partir
-      du premier envoi et à la même adresse. Les dates de réception dépendent des
+      Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à partir
+      du premier envoi et à la même adresse. Le client peut aussi choisir de faire
+      expédier toutes les cartes ensemble dans un seul envoi. Les dates de réception dépendent des
       délais postaux. Le format, le papier, le délai de préparation du premier
       envoi et le traitement fiscal seront confirmés avant l’ouverture des ventes.
     </p>

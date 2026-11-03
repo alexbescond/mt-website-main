@@ -1,0 +1,60 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import "../styles/tracking.css";
+---
+<Base title="Suivre mes cartes" minimal>
+  <section class="wrap tracking-page">
+    <div id="demo-banner" class="tracking-demo" hidden>
+      <span>Un aperçu du voyage · Commande fictive, aucun envoi réel.</span>
+      <a href="/admin?demo=1">Voir l’espace de préparation →</a>
+    </div>
+    <header class="tracking-heading">
+      <span class="eyebrow">DES NOUVELLES DE SON COMPAGNON</span>
+      <h1>Son petit voyage,<br /><em>carte après carte.</em></h1>
+      <p id="tracking-intro">Retrouvez les préparatifs, les départs et les petits mots en chemin.</p>
+    </header>
+    <p id="tracking-message" class="tracking-message" role="status" aria-live="polite">Un instant, on retrouve ses aventures…</p>
+    <div id="tracking-content" class="tracking-grid" hidden>
+      <section aria-labelledby="itinerary-title">
+        <div class="itinerary-heading">
+          <h2 id="itinerary-title">Le carnet de voyage</h2>
+          <button id="refresh-tracking" class="tracking-text-button" type="button">Actualiser</button>
+        </div>
+        <ol id="tracking-cards" class="tracking-timeline"></ol>
+      </section>
+      <aside class="tracking-aside">
+        <div class="tracking-stamp"><Icon name="plane" size={30} /></div>
+        <span class="eyebrow">SA PETITE CORRESPONDANCE</span>
+        <h2 id="tracking-companion">Son compagnon</h2>
+        <p id="tracking-reference" class="tracking-reference"></p>
+        <div class="tracking-progress-heading"><strong id="tracking-progress"></strong><span id="tracking-progress-percent"></span></div>
+        <progress id="tracking-progress-bar" max="3" value="0" aria-label="Cartes expédiées"></progress>
+        <div class="tracking-next">
+          <span class="eyebrow">LE PROCHAIN DÉPART</span>
+          <strong id="tracking-next-date"></strong>
+          <p id="tracking-next-copy"></p>
+        </div>
+        <p class="tracking-postal-note">Les dates indiquées sont celles des expéditions. La réception dépend ensuite de l’acheminement postal.</p>
+        <p class="tracking-privacy"><Icon name="lock" size={15} /> Ce carnet est privé. Gardez votre lien pour vous.</p>
+      </aside>
+    </div>
+    <section id="tracking-access" class="tracking-access" hidden aria-labelledby="access-title">
+      <div>
+        <span class="eyebrow">RETROUVONS SON VOYAGE</span>
+        <h2 id="access-title">Votre lien de suivi</h2>
+        <p>Ouvrez le lien de votre e-mail de confirmation, ou recevez-en un nouveau. Aucun compte à créer.</p>
+        <a id="tracking-demo-link" class="tracking-text-button" href="/suivi?demo=1" hidden>Découvrir un exemple de suivi →</a>
+      </div>
+      <form id="tracking-access-form" class="tracking-form">
+        <label>Votre adresse e-mail<input type="email" name="email" autocomplete="email" required maxlength="254" /></label>
+        <label>Référence de commande<input type="text" name="reference" placeholder="Ex. A1B2C3D4" required pattern="[a-fA-F0-9]{8}" maxlength="8" autocapitalize="characters" /></label>
+        <small>Les 8 caractères indiqués sur votre confirmation de commande.</small>
+        <button class="button" type="submit">Recevoir mon lien de suivi <Icon name="arrow" size={17} /></button>
+        <p id="access-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <noscript><p>Activez JavaScript pour ouvrir votre carnet de voyage et consulter l’avancement des cartes.</p></noscript>
+  </section>
+  <script src="../scripts/tracking.ts"></script>
+</Base>

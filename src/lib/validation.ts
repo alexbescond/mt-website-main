@@ -1,4 +1,4 @@
-import { isAdventureId, isCompanionId, getCardPack } from "./catalog";
+import { isAdventureId, isCompanionId, getOrderPrice, isDeliveryMode } from "./catalog";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -58,7 +58,10 @@ export function validateOrder(data: FormData) {
     throw new InputError("Choisissez une aventure pour chaque carte.");
   if (new Set(cardAdventures).size !== cardAdventures.length)
     throw new InputError("Choisissez une aventure différente pour chaque carte.");
-  const pack = getCardPack(quantity);
+  const requestedDelivery = value(data, "deliveryMode", 10, false) || "weekly";
+  if (!isDeliveryMode(requestedDelivery)) throw new InputError("Choisissez un mode d’envoi valide.");
+  const deliveryMode = quantity === 1 ? "weekly" : requestedDelivery;
+  const pack = getOrderPrice(quantity, deliveryMode);
   const companion = value(data, "companion", 10);
   if (!isCompanionId(companion))
     throw new InputError("Choisissez un doudou ou une tétine.");
@@ -70,34 +73,25 @@ export function validateOrder(data: FormData) {
     )
   )
     throw new InputError("Veuillez recharger le formulaire.");
-  const email = value(data, "email", 254);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    throw new InputError("Vérifiez votre adresse e-mail.");
-  const postalCode = value(data, "postalCode", 5);
-  if (!/^\d{5}$/.test(postalCode) || /^(97|98)/.test(postalCode))
-    throw new InputError("Indiquez un code postal de France métropolitaine.");
-  if (data.get("country") !== "FR")
-    throw new InputError(
-      "La livraison est disponible en France métropolitaine.",
-    );
-  if (data.get("photoConsent") !== "on" || data.get("termsConsent") !== "on")
+  // Contact details are collected by Stripe. Only coupon eligibility needs an
+  // email before redirecting, and it must not supply the delivery address.
+  const hasCoupon = typeof data.get("couponCode") === "string" && String(data.get("couponCode")).trim() !== "";
+  const couponEmail = hasCoupon ? value(data, "couponEmail", 254).toLowerCase() : "";
+  if (hasCoupon && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(couponEmail))
+    throw new InputError("Indiquez une adresse e-mail valide pour votre code promo.");
+  if (data.get("termsConsent") !== "on")
     throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
     attemptId,
     quantity,
+    deliveryMode,
     cardAdventures,
     unitPriceCents: pack.unitCents,
     amountCents: pack.totalCents,
     companion,
     companionName,
-    email,
-    postalCode,
+    couponEmail,
     childName: value(data, "childName", 60),
-    firstName: value(data, "firstName", 80),
-    lastName: value(data, "lastName", 80),
-    address: value(data, "address", 150),
-    addressExtra: value(data, "addressExtra", 150, false),
-    city: value(data, "city", 100),
     notes: value(data, "notes", 500, false),
   };
 }
