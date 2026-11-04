@@ -4,5 +4,7 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 ADMIN_PASSWORD=
 TRACKING_LINK_SECRET=
-# Resend is used only when CHECKOUT_MODE=live and EMAIL_ENABLED=true.
+# Keep local email sending disabled. Staging/test and production/live send real
+# emails through Resend when EMAIL_ENABLED=true and the required secrets exist.
+EMAIL_ENABLED=false
 RESEND_API_KEY=

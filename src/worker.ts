@@ -2,6 +2,7 @@ import { handle } from "@astrojs/cloudflare/handler";
 import { api } from "./lib/api";
 import { cleanupOrders } from "./lib/payments";
 import { sendNotifications } from "./lib/notifications";
+import { dailyCleanupDue } from "./lib/schedules";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -47,7 +48,7 @@ export default {
   },
   async scheduled(event, env) {
     await sendNotifications(env);
-    if (event.cron === "17 3 * * *") {
+    if (dailyCleanupDue(event)) {
       await cleanupOrders(env);
       await env.DB.batch([
         env.DB.prepare("DELETE FROM tracking_sessions WHERE expires_at<?").bind(Date.now()),

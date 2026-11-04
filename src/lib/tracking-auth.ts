@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { InputError, limitedBody, sha256 } from "./validation";
+import { TRACKING_LINK_DAYS } from "./tracking-model";
 
 const DAY = 86400000;
 export function cookieValue(request: Request, name: string) {
@@ -69,7 +70,7 @@ async function linkKey(env: AppEnv) {
   return crypto.subtle.importKey("raw", new TextEncoder().encode(env.TRACKING_LINK_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
 export async function trackingLink(env: AppEnv, orderId: string, now = Date.now()) {
-  const payload = orderId + "." + (now + 30 * DAY);
+  const payload = orderId + "." + (now + TRACKING_LINK_DAYS * DAY);
   const signature = await crypto.subtle.sign("HMAC", await linkKey(env), new TextEncoder().encode(payload));
   const hex = Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
   // The fragment is never sent in HTTP URLs or Referer headers.
