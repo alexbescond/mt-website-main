@@ -94,13 +94,34 @@ it("uses signed expiring links and hashed sessions; customer API omits address, 
   expect(body.cards).toHaveLength(3);
   const saved = await env.DB.prepare("SELECT token_hash FROM tracking_sessions").first<{ token_hash: string }>();
   expect(saved?.token_hash).not.toBe(cookie.split("=")[1]);
-  const expired = await trackingLink(bindings, id, Date.now() - 31 * 86400000);
+  const expired = await trackingLink(bindings, id, Date.now() - 91 * 86400000);
   expect((await call("/api/tracking/access", { token: expired.split("#acces=")[1] })).status).toBe(401);
   const token = (await trackingLink(bindings, id)).split("#acces=")[1];
   expect((await call("/api/tracking/access", { token: token.slice(0, -1) + (token.endsWith("0") ? "1" : "0") })).status).toBe(401);
   expect((await call("/api/tracking/access", { token }, undefined, { ...bindings, CHECKOUT_MODE: "live" })).status).toBe(401);
   await env.DB.prepare("UPDATE tracking_sessions SET expires_at=0").run();
   expect((await call("/api/tracking", undefined, cookie)).status).toBe(401);
+});
+it("keeps emailed links usable for 90 days and rejects them at the exact expiry", async () => {
+  const id = await paidOrder();
+  const issuedAt = Date.now();
+  const now = vi.spyOn(Date, "now").mockReturnValue(issuedAt);
+  const link = await trackingLink(bindings, id);
+  const token = link.split("#acces=")[1];
+  const expiresAt = issuedAt + 90 * 86400000;
+  expect(Number(token.split(".")[1])).toBe(expiresAt);
+  for (const time of [issuedAt + 31 * 86400000, expiresAt - 1]) {
+    now.mockReturnValue(time);
+    expect((await call("/api/tracking/access", { token })).status).toBe(200);
+  }
+  now.mockReturnValue(expiresAt);
+  expect((await call("/api/tracking/access", { token })).status).toBe(401);
+  for (const kind of ["confirmation", "shipped", "access"]) {
+    const message = notificationMessage(kind, "EXAMPLE", link, 1, "2026-11-04");
+    expect(message.text).toContain("valable 90 jours");
+    expect(message.html).toContain("valable 90 jours");
+    expect(message.text + message.html).not.toContain("30 jours");
+  }
 });
 it("plans dates, records actual dispatches atomically, rejects repeats and schedules the next cards seven calendar days later", async () => {
   const id = await paidOrder();
