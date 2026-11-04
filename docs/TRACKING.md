@@ -65,11 +65,11 @@ Les notifications sont transactionnelles : confirmation de commande, expédition
 
        npx wrangler secret put RESEND_API_KEY --env production --name mt-main-production --profile matetine
 
-3. Renseigner EMAIL_FROM avec une adresse du domaine vérifié et EMAIL_REPLY_TO avec l’adresse de réponse, puis EMAIL_ENABLED=true dans `env.production.vars` de wrangler.jsonc. TRACKING_LINK_SECRET doit être configuré. Activer les crons de production `*/5 * * * *` (notifications) et `17 3 * * *` (rétention) avant les ventes ; aucun cron n’est actif en production démo. Vérifier le quota disponible du compte. Aucun binding Cloudflare send_email n’est nécessaire.
-4. Appliquer les migrations et déployer après les contrôles habituels. Les contrôles de déploiement live exigent l’expéditeur, RESEND_API_KEY et les noms des secrets de suivi. Ils ne prouvent pas que la clé API est valide ni que le domaine est vérifié.
+3. Renseigner EMAIL_FROM avec une adresse du domaine vérifié et EMAIL_REPLY_TO avec l’adresse de réponse. `EMAIL_ENABLED=true` est configuré dans `vars` pour le staging et `env.production.vars` pour la production. Chaque environnement possède un cron unique `*/5 * * * *` dans `triggers.crons` (notifications toutes les cinq minutes, rétention à 03:15 UTC). TRACKING_LINK_SECRET et RESEND_API_KEY doivent être installés séparément sur chaque Worker. Pour le staging, utiliser `--env '' --name mt-website-main` dans la commande ci-dessus. Aucun binding Cloudflare send_email n’est nécessaire.
+4. Appliquer les migrations et déployer après les contrôles habituels. Les contrôles de déploiement exigent l’expéditeur, RESEND_API_KEY, le cron et les noms des secrets de suivi lorsque les e-mails sont activés, en staging comme en production. Ils ne prouvent pas que la clé API est valide ni que le domaine est vérifié.
 5. Vérifier une confirmation et une expédition avec une adresse réellement contrôlée. Les tests automatisés simulent l’API Resend et n’envoient rien.
 
-L’envoi vers des clients réels est conditionné à CHECKOUT_MODE=live et EMAIL_ENABLED=true. En demo et test, aucun envoi même si une clé Resend est présente. Garder ces modes pour le développement local : l’appel HTTPS à Resend est réel en mode live.
+Avec EMAIL_ENABLED=true, les modes test (staging) et live (production) envoient de vrais e-mails via Resend. Chaque environnement traite uniquement ses commandes : test en staging, live en production. Les objets des e-mails de staging commencent par « [TEST] » et leurs liens ouvrent le suivi du staging. Le mode demo n’envoie jamais d’e-mail. En local, garder EMAIL_ENABLED=false dans .dev.vars ; les tests automatisés utilisent des secrets fictifs et simulent Resend.
 
 Les requêtes de préparation et le webhook ne dépendent pas de la disponibilité de Resend : une notification est enregistrée dans D1 dans la même transaction que l’événement métier. Le cron toutes les cinq minutes en traite jusqu’à vingt par passage. Une réservation atomique évite les envois concurrents, avec cinq tentatives maximum et délai progressif. Les erreurs réseau, 429, 5xx et conflits temporaires sont réessayés ; Retry-After est respecté. Chaque appel expire après dix secondes. Les erreurs permanentes restent en échec et sont visibles dans l’atelier. Après correction, « Réessayer les notifications en échec » les remet en attente.
 
@@ -79,7 +79,7 @@ Le statut envoyé signifie « accepté par Resend », pas reçu ou lu. Consulter
 
 ## Exploitation
 
-Le cron quotidien existant conserve le nettoyage des commandes abandonnées et des photos, et supprime les sessions expirées. Les photos restent soumises à la rétention de 90 jours à partir de la création de commande. Les données de commande et de notification sont conservées pour l’exploitation ; leur durée administrative définitive reste à fixer.
+Le cron partagé exécute aussi, chaque jour à 03:15 UTC, le nettoyage des commandes abandonnées et des photos, et supprime les sessions expirées. L’ancien cron quotidien de 03:17 UTC reste reconnu pendant la propagation du déploiement. Un seul déclencheur par environnement suffit. Les photos restent soumises à la rétention de 90 jours à partir de la création de commande. Les données de commande et de notification sont conservées pour l’exploitation ; leur durée administrative définitive reste à fixer.
 
 La fabrication, l’impression et le dépôt postal restent manuels. Aucun transporteur ni imprimeur n’est connecté. L’avancement décrit les opérations enregistrées dans l’atelier, pas l’acheminement postal.
 

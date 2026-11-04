@@ -16,7 +16,7 @@
     "CHECKOUT_MODE": "test",
     "SITE_INDEXABLE": "false",
     "LEGAL_APPROVED": "false",
-    "EMAIL_ENABLED": "false",
+    "EMAIL_ENABLED": "true",
     "EMAIL_FROM": "no-reply@les-aventures-de-doudou-tetine.com",
     "EMAIL_REPLY_TO": ""
   },
@@ -29,8 +29,8 @@
   // Notifications use Resend. Store RESEND_API_KEY as a Worker secret (see docs/TRACKING.md).
   "kv_namespaces": [{ "binding": "SESSION", "id": "9f532fb7c2034ef29d5e63881533b225" }],
   "ratelimits": [{ "name": "CHECKOUT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
-  // Staging never sends emails; only photo retention needs a schedule.
-  "triggers": { "crons": ["17 3 * * *"] },
+  // One trigger handles emails every five minutes and daily cleanup at 03:15 UTC.
+  "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true },
   "env": {
     "production": {
@@ -39,7 +39,7 @@
       "workers_dev": false,
       "preview_urls": false,
       // Live order notifications and private-photo retention.
-      "triggers": { "crons": ["17 3 * * *", "*/5 * * * *"] },
+      "triggers": { "crons": ["*/5 * * * *"] },
       "routes": [{ "pattern": "les-aventures-de-doudou-tetine.com/*", "zone_name": "les-aventures-de-doudou-tetine.com" }],
       "vars": {
         "SITE_ORIGIN": "https://les-aventures-de-doudou-tetine.com",
