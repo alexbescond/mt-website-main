@@ -1,3 +1,4 @@
+import { localeTags, type Locale, type Translator } from "./i18n/core";
 export const SITE_NAME = "Les aventures de mon doudou et ma tétine";
 export const SEND_INTERVAL_DAYS = 7;
 // Adjust this single value to change the grouped-delivery discount everywhere.
@@ -116,4 +117,26 @@ export function storyTitle(adventure: AdventureId, companion: CompanionId) {
 export function dispatchLabel(index: number, mode: DeliveryMode = "weekly") {
   if (mode === "together") return "Envoi groupé";
   return index === 0 ? "Premier envoi" : `+ ${index * SEND_INTERVAL_DAYS} jours`;
+}
+
+// Locale is explicit: never share a visitor's language in mutable server state.
+export function getCatalog(locale: Locale, t: Translator) {
+  const localAdventures = Object.fromEntries(Object.entries(adventures).map(([id, item]) =>
+    [id, { ...item, title: t(item.title), short: t(item.short), description: t(item.description) }])) as Record<AdventureId, { title: string; short: string; description: string; image: string; icon: string }>;
+  const localCompanions = Object.fromEntries(Object.entries(companions).map(([id, item]) =>
+    [id, { label: t(item.label), character: t(item.character), description: t(item.description) }])) as Record<CompanionId, { label: string; character: string; description: string }>;
+  return {
+    adventures: localAdventures,
+    companions: localCompanions,
+    cardPacks: cardPacks.map(pack => ({ ...pack, name: t(pack.name) })),
+    formatPrice: (cents: number) => new Intl.NumberFormat(localeTags[locale], { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(cents / 100),
+    deliveryLabel: (quantity: number, mode: DeliveryMode) => quantity === 1 ? t("Un envoi postal") : mode === "together" ? t("Toutes les cartes dans un seul envoi") : t("{0} envois · Une carte tous les 7 jours", quantity),
+    dispatchLabel: (index: number, mode: DeliveryMode = "weekly") => mode === "together" ? t("Envoi groupé") : index === 0 ? t("Premier envoi") : t("+ {0} jours", index * SEND_INTERVAL_DAYS),
+    storyTitle: (adventure: AdventureId, companion: CompanionId) => `${localCompanions[companion].character} — ${localAdventures[adventure].title}`,
+    adventurePreview: (adventure: AdventureId, companion: CompanionId) => ({
+      ...adventurePreview(adventure, companion),
+      alt: t("Exemple de carte avec {0} — {1}", localCompanions[companion].character, localAdventures[adventure].title),
+      caption: t("EXEMPLE ILLUSTRÉ AVEC {0}", localCompanions[companion].character.toLocaleUpperCase(localeTags[locale])),
+    }),
+  };
 }

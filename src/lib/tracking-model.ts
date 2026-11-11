@@ -1,4 +1,5 @@
 import { adventurePreview, adventures, isAdventureId, type CompanionId, type DeliveryMode } from "./catalog";
+import { localeTags, type Locale } from "./i18n/core";
 
 export const TRACKING_LINK_DAYS = 90;
 
@@ -24,6 +25,8 @@ export interface TrackingOrder {
   quantity: number;
   deliveryMode: DeliveryMode;
   paidAt: number;
+  locale: Locale;
+  cardLocale: Locale;
   deliveryStatus?: "pending" | "ready" | "needs_review";
   cards: TrackingCard[];
 }
@@ -35,8 +38,8 @@ export function addDays(date: string, days: number) {
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
 }
-export function displayDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" })
+export function displayDate(date: string, locale: Locale = "fr") {
+  return new Intl.DateTimeFormat(localeTags[locale], { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" })
     .format(new Date(date + "T12:00:00Z"));
 }
 export function cardPresentation(card: TrackingCard, companion: CompanionId) {

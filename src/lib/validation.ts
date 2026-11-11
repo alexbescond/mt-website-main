@@ -1,4 +1,5 @@
 import { isAdventureId, isCompanionId, getOrderPrice, isDeliveryMode } from "./catalog";
+import { isLocale } from "./i18n/core";
 export class InputError extends Error {
   constructor(
     message: string,
@@ -46,10 +47,13 @@ function value(data: FormData, name: string, max: number, required = true) {
     text.length > max ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)
   )
-    throw new InputError(`Vérifiez le champ « ${name} ».`);
+    throw new InputError("Vérifiez les champs du formulaire.");
   return text;
 }
 export function validateOrder(data: FormData) {
+  const locale = value(data, "locale", 2, false) || "fr";
+  const cardLocale = value(data, "cardLocale", 2, false) || locale;
+  if (!isLocale(locale) || !isLocale(cardLocale)) throw new InputError("Choisissez une langue valide.");
   const quantityValue = value(data, "quantity", 1);
   if (!/^[1-5]$/.test(quantityValue)) throw new InputError("Choisissez de 1 à 5 cartes.");
   const quantity = Number(quantityValue);
@@ -76,6 +80,8 @@ export function validateOrder(data: FormData) {
   if (data.get("termsConsent") !== "on")
     throw new InputError("Votre accord est nécessaire pour préparer ces cartes.");
   return {
+    locale,
+    cardLocale,
     attemptId,
     quantity,
     deliveryMode,
@@ -91,10 +97,9 @@ export function validateOrder(data: FormData) {
 export async function validatePhoto(
   entry: FormDataEntryValue | null,
   required: boolean,
-  label = "son compagnon",
 ) {
   if (!(entry instanceof File) || entry.size === 0) {
-    if (required) throw new InputError(`Ajoutez une photo de ${label}.`);
+    if (required) throw new InputError("Ajoutez une photo de son compagnon.");
     return null;
   }
   if (entry.size > 5 * 1024 * 1024)

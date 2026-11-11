@@ -1,4 +1,6 @@
 ---
+import { getI18n, locales, languageNames, localeTags, localizedPath, unlocalizedPath, messages } from "../lib/i18n";
+const { locale, t, localPath } = getI18n(Astro.url);
 import "@fontsource-variable/dm-sans";
 import "@fontsource-variable/fraunces";
 import "../styles/site.css";
@@ -12,67 +14,73 @@ interface Props {
   minimal?: boolean;
 }
 const {
-  title = "Ses petits compagnons, de très grandes aventures",
-  description = "De 1 à 5 cartes postales personnalisées avec le doudou ou la tétine de votre enfant. Une carte expédiée chaque semaine, dès 5 € la carte par 5.",
+  title = t("Ses petits compagnons, de très grandes aventures"),
+  description = t("De 1 à 5 cartes postales personnalisées avec le doudou ou la tétine de votre enfant. Une carte expédiée chaque semaine, dès 5 € la carte par 5."),
   minimal = false,
 } = Astro.props;
-const path = Astro.url.pathname;
+const path = unlocalizedPath(Astro.url.pathname);
+const canonical = new URL(localPath(path), Astro.site);
+const languageLinks = locales.map(language => ({ language, href: localizedPath(path, language) }));
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} | {SITE_NAME}</title>
+    <title>{title} | {t(SITE_NAME)}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#faf7f0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="canonical" href={new URL(path, Astro.site)} />
-    <meta property="og:title" content={`${title} | ${SITE_NAME}`} />
+    <link rel="canonical" href={canonical} />
+    {path !== "/admin" && languageLinks.map(({ language, href }) => <link rel="alternate" hreflang={language} href={new URL(href, Astro.site)} />)}
+    {path !== "/admin" && <link rel="alternate" hreflang="x-default" href={new URL(path, Astro.site)} />}
+    <meta property="og:title" content={`${title} | ${t(SITE_NAME)}`} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale" content={localeTags[locale].replace("-", "_")} />
+    {locales.filter(language => language !== locale).map(language => <meta property="og:locale:alternate" content={localeTags[language].replace("-", "_")} />)}
     <meta
       property="og:image"
       content={new URL("/images/compagnons-voyage.webp", Astro.site)}
     />
   </head>
   <body>
-    <a class="skip-link" href="#contenu">
-      Aller au contenu
-    </a>
+    <script id="i18n-messages" type="application/json" set:html={JSON.stringify(messages[locale]).replace(/</g, "\\u003c")} />
+    <a class="skip-link" href="#contenu">{t(" Aller au contenu ")}</a>
     <div class="announcement">
       <Icon name="sparkles" size={14} />
-      <span>De petits compagnons. Des souvenirs pour longtemps.</span>
+      <span>{t("De petits compagnons. Des souvenirs pour longtemps.")}</span>
       <Icon name="sparkles" size={14} />
     </div>
     <header class="site-header wrap">
       <Logo />
+      {path !== "/admin" && <details class="language-switch">
+        <summary aria-label={t("Langue")}>{languageNames[locale]} <span aria-hidden="true">⌄</span></summary>
+        <nav aria-label={t("Langue")}>
+          {languageLinks.map(({ language, href }) => <a href={`${href}?lang=${language}`} lang={language} hreflang={language} data-language={language} aria-current={language === locale ? "true" : undefined}>{languageNames[language]}</a>)}
+        </nav>
+      </details>}
       {!minimal && (
-        <nav class="desktop-nav" aria-label="Navigation principale">
+        <nav class="desktop-nav" aria-label={t("Navigation principale")}>
           <a
-            href="/aventures"
+            href={localPath("/aventures")}
             aria-current={path === "/aventures" ? "page" : undefined}
-          >
-            Les aventures
-          </a>
-          <a href="/#comment-ca-marche">Le concept</a>
+          >{t(" Les aventures ")}</a>
+          <a href={localPath("/#comment-ca-marche")}>{t("Le concept")}</a>
           <a
-            href="/notre-histoire"
+            href={localPath("/notre-histoire")}
             aria-current={path === "/notre-histoire" ? "page" : undefined}
-          >
-            Notre histoire
-          </a>
-          <a href="/#tarifs">Les tarifs</a>
-          <a href="/#questions">Vos questions</a>
+          >{t(" Notre histoire ")}</a>
+          <a href={localPath("/#tarifs")}>{t("Les tarifs")}</a>
+          <a href={localPath("/#questions")}>{t("Vos questions")}</a>
         </nav>
       )}
       <a
         class={minimal ? "back-link" : "button button-small header-cta"}
-        href={minimal ? "/aventures" : "/personnaliser"}
+        href={localPath(minimal ? "/aventures" : "/personnaliser")}
       >
-        {minimal ? "← Les aventures" : "Créer ses cartes"}
+        {minimal ? t("← Les aventures") : t("Créer ses cartes")}
         {!minimal && <Icon name="arrow" size={16} />}
       </a>
       {!minimal && (
@@ -81,7 +89,7 @@ const path = Astro.url.pathname;
           id="menu-toggle"
           aria-expanded="false"
           aria-controls="mobile-nav"
-          aria-label="Ouvrir le menu"
+          aria-label={t("Ouvrir le menu")}
         >
           <span></span>
           <span></span>
@@ -92,15 +100,15 @@ const path = Astro.url.pathname;
       <nav
         id="mobile-nav"
         class="mobile-nav"
-        aria-label="Navigation mobile"
+        aria-label={t("Navigation mobile")}
         hidden
       >
-        <a href="/aventures">Les aventures</a>
-        <a href="/#comment-ca-marche">Le concept</a>
-        <a href="/notre-histoire">Notre histoire</a>
-        <a href="/#tarifs">Les tarifs</a>
-          <a href="/#questions">Vos questions</a>
-        <a href="/personnaliser">Créer ses cartes →</a>
+        <a href={localPath("/aventures")}>{t("Les aventures")}</a>
+        <a href={localPath("/#comment-ca-marche")}>{t("Le concept")}</a>
+        <a href={localPath("/notre-histoire")}>{t("Notre histoire")}</a>
+        <a href={localPath("/#tarifs")}>{t("Les tarifs")}</a>
+          <a href={localPath("/#questions")}>{t("Vos questions")}</a>
+        <a href={localPath("/personnaliser")}>{t("Créer ses cartes →")}</a>
       </nav>
     )}
     <main id="contenu">
@@ -110,57 +118,61 @@ const path = Astro.url.pathname;
       <div class="wrap footer-top">
         <div>
           <Logo />
-          <p>
-            Leurs petits compagnons ont tant
-            <br />
-            de petits mots à leur envoyer.
-          </p>
+          <p>{t(" Leurs petits compagnons ont tant ")}<br />{t(" de petits mots à leur envoyer. ")}</p>
         </div>
         <div class="footer-links">
-          <span class="eyebrow">PARTIR À LA DÉCOUVERTE</span>
-          <a href="/aventures">Toutes les aventures</a>
-          <a href="/#comment-ca-marche">Comment ça marche</a>
-          <a href="/notre-histoire">Notre histoire</a>
+          <span class="eyebrow">{t("PARTIR À LA DÉCOUVERTE")}</span>
+          <a href={localPath("/aventures")}>{t("Toutes les aventures")}</a>
+          <a href={localPath("/#comment-ca-marche")}>{t("Comment ça marche")}</a>
+          <a href={localPath("/notre-histoire")}>{t("Notre histoire")}</a>
         </div>
         <div class="footer-links">
-          <span class="eyebrow">PRÉPARER LE VOYAGE</span>
-          <a href="/#questions">Questions fréquentes</a>
-          <a href="/informations#confidentialite">
-            Vos photos, votre confiance
-          </a>
-          <a href="/personnaliser">Personnaliser ses cartes</a>
-          <a href="/suivi">Suivre mes cartes</a>
+          <span class="eyebrow">{t("PRÉPARER LE VOYAGE")}</span>
+          <a href={localPath("/#questions")}>{t("Questions fréquentes")}</a>
+          <a href={localPath("/informations#confidentialite")}>{t(" Vos photos, votre confiance ")}</a>
+          <a href={localPath("/personnaliser")}>{t("Personnaliser ses cartes")}</a>
+          <a href={localPath("/suivi")}>{t("Suivre mes cartes")}</a>
         </div>
         <div class="footer-note">
           <Icon name="heart" size={27} />
-          <p>
-            Des cartes à partager.
-            <br />À son rythme. Avec tendresse.
-          </p>
-          <span>
-            Paiement via <strong>stripe</strong>
+          <p>{t(" Des cartes à partager. ")}<br />{t("À son rythme. Avec tendresse. ")}</p>
+          <span>{t(" Paiement via ")}<strong>stripe</strong>
           </span>
         </div>
       </div>
       <div class="wrap footer-bottom">
         <span>
-          © {new Date().getFullYear()} {SITE_NAME}
+          © {new Date().getFullYear()} {t(SITE_NAME)}
         </span>
         <div>
-          <a href="/informations#mentions">Mentions légales</a>
-          <a href="/informations#confidentialite">Confidentialité</a>
-          <a href="/informations#conditions">Conditions de vente</a>
+          <a href={localPath("/informations#mentions")}>{t("Mentions légales")}</a>
+          <a href={localPath("/informations#confidentialite")}>{t("Confidentialité")}</a>
+          <a href={localPath("/informations#conditions")}>{t("Conditions de vente")}</a>
         </div>
       </div>
     </footer>
     <script>
+    import { t } from "../scripts/i18n";
+    import { isLocale } from "../lib/i18n/core";
+    const current = new URL(location.href);
+    if (isLocale(current.searchParams.get("lang"))) {
+      current.searchParams.delete("lang");
+      history.replaceState(history.state, "", current.pathname + current.search + current.hash);
+    }
+    document.querySelectorAll<HTMLAnchorElement>("[data-language]").forEach(link => {
+      const target = new URL(link.href);
+      target.search = current.search;
+      target.searchParams.set("lang", link.dataset.language!);
+      target.hash = current.hash;
+      link.href = target.href;
+    });
       const toggle = document.querySelector<HTMLButtonElement>("#menu-toggle");
       const menu = document.querySelector<HTMLElement>("#mobile-nav");
       function closeMenu() {
         if (menu && toggle) {
           menu.hidden = true;
           toggle.setAttribute("aria-expanded", "false");
-          toggle.setAttribute("aria-label", "Ouvrir le menu");
+          toggle.setAttribute("aria-label", t("Ouvrir le menu"));
         }
       }
       toggle?.addEventListener("click", () => {
@@ -169,7 +181,7 @@ const path = Astro.url.pathname;
         toggle.setAttribute("aria-expanded", String(!menu.hidden));
         toggle.setAttribute(
           "aria-label",
-          menu.hidden ? "Ouvrir le menu" : "Fermer le menu",
+          menu.hidden ? t("Ouvrir le menu") : t("Fermer le menu"),
         );
       });
       menu

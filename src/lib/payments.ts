@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { paidOrderStatements } from "./tracking";
-import { companions, SEND_INTERVAL_DAYS, deliveryLabel } from "./catalog";
+import { getCatalog, SEND_INTERVAL_DAYS } from "./catalog";
+import { localizedPath, translator } from "./i18n";
 import {
   InputError,
   limitedBody,
@@ -98,6 +99,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
     throw new InputError("Formulaire illisible.");
   }
   const data = validateOrder(form);
+  const t = translator(data.locale);
+  const { companions, deliveryLabel } = getCatalog(data.locale, t);
   // An older open form must not silently lose a discount it already displayed.
   if (form.get("couponCode"))
     throw new InputError("Les codes promo se saisissent désormais sur Stripe. Rechargez la page pour continuer.", 409);
@@ -135,8 +138,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
   // Stripe applies promotions later, on its hosted checkout page.
   await env.DB.prepare(
     `INSERT OR IGNORE INTO orders
-  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode,subtotal_cents,delivery_status,discount_source)
-  VALUES (?,?,?,?,?,'','','','','','','',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','stripe')`,
+  (id,request_hash,access_token,book,child_name,first_name,last_name,email,address,address_extra,postal_code,city,notes,pacifier_key,child_key,amount_cents,payment_mode,consent_version,created_at,companion_type,companion_name,product_type,card_quantity,unit_price_cents,card_adventures,send_interval_days,delivery_mode,subtotal_cents,delivery_status,discount_source,locale,card_locale)
+  VALUES (?,?,?,?,?,'','','','','','','',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','stripe',?,?)`,
   )
     .bind(
       id,
@@ -160,6 +163,8 @@ export async function createCheckout(request: Request, env: AppEnv) {
       SEND_INTERVAL_DAYS,
       data.deliveryMode,
       data.amountCents,
+      data.locale,
+      data.cardLocale,
     )
     .run();
   const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?")
@@ -181,17 +186,17 @@ export async function createCheckout(request: Request, env: AppEnv) {
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
-      locale: "fr",
+      locale: data.locale,
       allowed_payment_method_types: ["card"],
       allow_promotion_codes: true,
       // Payment-mode Checkout handles 100% discounts without a payment method.
       // payment_method_collection is only valid for subscriptions.
       shipping_address_collection: { allowed_countries: [...SHIPPING_COUNTRIES] },
       custom_text: {
-        shipping_address: { message: "Livraison en France métropolitaine (hors codes postaux 97 et 98), Belgique, Luxembourg et Suisse uniquement. Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes." },
+        shipping_address: { message: t("Livraison en France métropolitaine (hors codes postaux 97 et 98), Belgique, Luxembourg et Suisse uniquement. Indiquez le nom figurant sur la boîte aux lettres. Cette adresse sera utilisée pour toutes les cartes.") },
       },
       client_reference_id: id,
-      metadata: { order_id: id },
+      metadata: { order_id: id, locale: data.locale, card_locale: data.cardLocale },
       line_items: [
         {
           quantity: data.quantity,
@@ -199,15 +204,15 @@ export async function createCheckout(request: Request, env: AppEnv) {
             currency: "eur",
             unit_amount: data.unitPriceCents,
             product_data: {
-              name: `Carte postale personnalisée — ${companions[data.companion].character}`,
+              name: t("Carte postale personnalisée — {0}", companions[data.companion].character),
               description:
-                `${deliveryLabel(data.quantity, data.deliveryMode)} — frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse`,
+                t("{0} — frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse", deliveryLabel(data.quantity, data.deliveryMode)),
             },
           },
         },
       ],
-      success_url: `${origin}/confirmation`,
-      cancel_url: `${origin}/personnaliser?annule=1&aventure=${data.cardAdventures[0]}&compagnon=${data.companion}&cartes=${data.quantity}&envoi=${data.deliveryMode}`,
+      success_url: origin + localizedPath("/confirmation", data.locale),
+      cancel_url: origin + localizedPath(`/personnaliser?annule=1&aventure=${data.cardAdventures[0]}&compagnon=${data.companion}&cartes=${data.quantity}&envoi=${data.deliveryMode}&langue=${data.cardLocale}`, data.locale),
     },
     { idempotencyKey: `mt-checkout-${id}` },
   );

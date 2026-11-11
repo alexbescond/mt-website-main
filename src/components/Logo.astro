@@ -1,7 +1,11 @@
+---
+import { getI18n } from "../lib/i18n";
+const { t, localPath } = getI18n(Astro.url);
+---
 <a
-  href="/"
+  href={localPath("/")}
   class="brand"
-  aria-label="Les aventures de mon doudou et ma tétine — accueil"
+  aria-label={t("Les aventures de mon doudou et ma tétine — accueil")}
 >
   <svg
     class="brand-mark"
@@ -51,9 +55,7 @@
     />
   </svg>
   <span>
-    <span class="brand-intro">Les aventures de</span>
-    <strong>
-      mon doudou <i>et</i> ma tétine
-    </strong>
+    <span class="brand-intro">{t("Les aventures de")}</span>
+    <strong>{t(" mon doudou ")}<i>{t("et")}</i>{t(" ma tétine ")}</strong>
   </span>
 </a>

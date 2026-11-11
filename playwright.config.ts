@@ -10,6 +10,7 @@ export default defineConfig({
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: "http://127.0.0.1:8790",
+    locale: "fr-FR",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

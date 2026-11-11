@@ -1,99 +1,32 @@
 ---
-import { TOGETHER_DISCOUNT_CENTS, formatPrice } from "../lib/catalog";
+import { getI18n } from "../lib/i18n";
+const { t, localPath, catalog } = getI18n(Astro.url);
+const { formatPrice } = catalog;
+import { TOGETHER_DISCOUNT_CENTS } from "../lib/catalog";
 import Base from "../layouts/Base.astro";
 ---
 
-<Base title="Informations et confidentialité" minimal>
+<Base title={t("Informations et confidentialité")} minimal>
   <article class="wrap section legal">
-    <span class="eyebrow">EN TOUTE TRANSPARENCE</span>
-    <h1>Les informations utiles.</h1>
-    <p class="notice">
-      Cette page est en cours de rédaction. Les informations
-      du vendeur, les caractéristiques définitives des cartes et les conditions de
-      vente restent à compléter.
-    </p>
-    <h2 id="mentions">Mentions légales</h2>
-    <p>
-      Les aventures de mon doudou et ma tétine est un projet de cartes postales
-      personnalisées avec les petits compagnons de votre enfant.
-    </p>
-    <p>
-      L’identité de l’éditeur, son adresse professionnelle, ses informations
-      d’immatriculation, son contact et le responsable de publication restent à
-      renseigner avant toute commercialisation. L’hébergement prévu repose sur
-      Cloudflare Workers, Cloudflare, Inc., 101 Townsend St, San Francisco, CA
-      94107, États-Unis.
-    </p>
-    <h2 id="confidentialite">Vos informations et vos photos</h2>
-    <p>
-      En démonstration, le formulaire conserve les informations uniquement en
-      mémoire dans votre navigateur. Aucune photo ni adresse n’est envoyée au
-      serveur. Fermer ou recharger la page efface ces informations.
-    </p>
-    <p>
-      Lors d’une commande ouverte, le prénom de l’enfant, la photo de son compagnon,
-      les coordonnées de la personne qui commande et l’adresse de livraison seront utilisés pour
-      personnaliser et expédier les cartes. La photo du compagnon est nécessaire ;
-      aucune photo de l’enfant n’est demandée. La photo du compagnon sert uniquement
-      à créer vos cartes.
-    </p>
-    <p>
-      Les photos sont placées dans un stockage privé Cloudflare R2. Elles ne
-      sont pas publiées sur le site. Leur suppression automatique est prévue au
-      plus tard 90 jours après leur envoi. Les commandes abandonnées et leurs
-      photos sont supprimées après 7 jours. Les données de commande et les
-      éventuelles durées de conservation comptable seront précisées dans la
-      politique définitive.
-    </p>
-    <p>
-      Stripe recueille votre nom, votre e-mail et votre adresse de livraison
-      au moment du paiement, puis les transmet au site pour préparer et suivre
-      vos envois. Le paiement est traité par Stripe. Le site ne reçoit pas vos coordonnées
-      bancaires. Un cookie technique, temporaire et sécurisé permet de retrouver
-      la confirmation de paiement pendant 24 heures. Aucun outil publicitaire ni
-      cookie de mesure d’audience n’est installé.
-    </p>
-    <p>
-      L’identité du responsable de traitement, le contact pour exercer vos
-      droits, les bases légales, les destinataires et les modalités applicables
-      aux transferts internationaux seront précisés avant l’ouverture. Aucune
-      photo n’est transmise à un service de génération d’images par cette
-      version du site.
-    </p>
-    <h2 id="conditions">Conditions de vente — version de préparation</h2>
-    <p>
-      Produit envisagé : de 1 à 5 cartes postales papier personnalisées avec le
-      doudou ou la tétine de votre enfant. Chaque carte comporte une illustration
-      et un petit mot à son prénom. Une aventure peut être choisie pour chaque carte.
-    </p>
-    <p>
-      Grille proposée : 1 carte à 7 €, 2 à 12 €, 3 à 16,50 €, 4 à 21 € et 5 à 25 €.
-      Pour 2 cartes ou plus envoyées ensemble, une remise de {formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte s’applique à cette grille.
-      Les frais de port en France métropolitaine, Belgique, Luxembourg et Suisse sont inclus. Paiement unique,
-      sans abonnement ni renouvellement automatique.
-    </p>
-    <p>
-      Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à partir
-      du premier envoi et à la même adresse. Le client peut aussi choisir de faire
-      expédier toutes les cartes ensemble dans un seul envoi. Les dates de réception dépendent des
-      délais postaux. Le format, le papier, le délai de préparation du premier
-      envoi et le traitement fiscal seront confirmés avant l’ouverture des ventes.
-    </p>
-    <p>
-      Les images présentées sont des exemples. Le récapitulatif permet de
-      vérifier et de corriger les informations avant la redirection vers Stripe.
-      Seule la confirmation du paiement par Stripe permet d’enregistrer une
-      commande comme payée.
-    </p>
-    <p>
-      Les modalités de fabrication, de réclamation, de remboursement, les
-      garanties, les règles applicables à la rétractation d’un produit
-      personnalisé et les coordonnées du médiateur seront décrites dans les
-      conditions définitives. Cette page ne constitue pas des conditions de
-      vente finalisées.
-    </p>
-    <a href="/" class="button button-secondary">
-      Retour à l’accueil
-    </a>
+    <span class="eyebrow">{t("EN TOUTE TRANSPARENCE")}</span>
+    <h1>{t("Les informations utiles.")}</h1>
+    <p class="notice">{t(" Cette page est en cours de rédaction. Les informations du vendeur, les caractéristiques définitives des cartes et les conditions de vente restent à compléter. ")}</p>
+    <h2 id="mentions">{t("Mentions légales")}</h2>
+    <p>{t(" Les aventures de mon doudou et ma tétine est un projet de cartes postales personnalisées avec les petits compagnons de votre enfant. ")}</p>
+    <p>{t(" L’identité de l’éditeur, son adresse professionnelle, ses informations d’immatriculation, son contact et le responsable de publication restent à renseigner avant toute commercialisation. L’hébergement prévu repose sur Cloudflare Workers, Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, États-Unis. ")}</p>
+    <h2 id="confidentialite">{t("Vos informations et vos photos")}</h2>
+    <p>{t(" En démonstration, le formulaire conserve les informations uniquement en mémoire dans votre navigateur. Aucune photo ni adresse n’est envoyée au serveur. Fermer ou recharger la page efface ces informations. ")}</p>
+    <p>{t(" Lors d’une commande ouverte, le prénom de l’enfant, la photo de son compagnon, les coordonnées de la personne qui commande et l’adresse de livraison seront utilisés pour personnaliser et expédier les cartes. La photo du compagnon est nécessaire ; aucune photo de l’enfant n’est demandée. La photo du compagnon sert uniquement à créer vos cartes. ")}</p>
+    <p>{t(" Les photos sont placées dans un stockage privé Cloudflare R2. Elles ne sont pas publiées sur le site. Leur suppression automatique est prévue au plus tard 90 jours après leur envoi. Les commandes abandonnées et leurs photos sont supprimées après 7 jours. Les données de commande et les éventuelles durées de conservation comptable seront précisées dans la politique définitive. ")}</p>
+    <p>{t(" Stripe recueille votre nom, votre e-mail et votre adresse de livraison au moment du paiement, puis les transmet au site pour préparer et suivre vos envois. Le paiement est traité par Stripe. Le site ne reçoit pas vos coordonnées bancaires. Un cookie technique, temporaire et sécurisé permet de retrouver la confirmation de paiement pendant 24 heures. Aucun outil publicitaire ni cookie de mesure d’audience n’est installé. ")}</p>
+    <p>{t(" L’identité du responsable de traitement, le contact pour exercer vos droits, les bases légales, les destinataires et les modalités applicables aux transferts internationaux seront précisés avant l’ouverture. Aucune photo n’est transmise à un service de génération d’images par cette version du site. ")}</p>
+    <p>{t("Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.")}</p>
+    <h2 id="conditions">{t("Conditions de vente — version de préparation")}</h2>
+    <p>{t(" Produit envisagé : de 1 à 5 cartes postales papier personnalisées avec le doudou ou la tétine de votre enfant. Chaque carte comporte une illustration et un petit mot à son prénom. Une aventure peut être choisie pour chaque carte. ")}</p>
+    <p>{t(" Grille proposée : 1 carte à 7 €, 2 à 12 €, 3 à 16,50 €, 4 à 21 € et 5 à 25 €. Pour 2 cartes ou plus envoyées ensemble, une remise de ")}{formatPrice(TOGETHER_DISCOUNT_CENTS)}{t(" par carte s’applique à cette grille. Les frais de port en France métropolitaine, Belgique, Luxembourg et Suisse sont inclus. Paiement unique, sans abonnement ni renouvellement automatique. ")}</p>
+    <p>{t(" Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à partir du premier envoi et à la même adresse. Le client peut aussi choisir de faire expédier toutes les cartes ensemble dans un seul envoi. Les dates de réception dépendent des délais postaux. Le format, le papier, le délai de préparation du premier envoi et le traitement fiscal seront confirmés avant l’ouverture des ventes. ")}</p>
+    <p>{t(" Les images présentées sont des exemples. Le récapitulatif permet de vérifier et de corriger les informations avant la redirection vers Stripe. Seule la confirmation du paiement par Stripe permet d’enregistrer une commande comme payée. ")}</p>
+    <p>{t(" Les modalités de fabrication, de réclamation, de remboursement, les garanties, les règles applicables à la rétractation d’un produit personnalisé et les coordonnées du médiateur seront décrites dans les conditions définitives. Cette page ne constitue pas des conditions de vente finalisées. ")}</p>
+    <a href={localPath("/")} class="button button-secondary">{t(" Retour à l’accueil ")}</a>
   </article>
 </Base>

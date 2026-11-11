@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
+import languageSchema from "../../migrations/0009_languages.sql?raw";
 import delivery from "../../migrations/0005_delivery_mode.sql?raw";
 import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
@@ -15,6 +16,9 @@ import { paidOrderStatements } from "../../src/lib/tracking";
 import { trackingLink } from "../../src/lib/tracking-auth";
 import { notificationMessage, sendNotifications } from "../../src/lib/notifications";
 import { addDays, parisDate } from "../../src/lib/tracking-model";
+import { locales, localeFromPath, localizedPath, type Locale } from "../../src/lib/i18n/core";
+import { messages, translator } from "../../src/lib/i18n";
+import { sitemap, isPrivatePage } from "../../src/lib/seo";
 
 const origin = "https://les-aventures-de-doudou-tetine.com";
 const adminPassword = "fixture-admin-password-for-local-tests";
@@ -22,9 +26,52 @@ const bindings: AppEnv = { ...env, CHECKOUT_MODE: "test", EMAIL_ENABLED: "false"
   ADMIN_PASSWORD: adminPassword, TRACKING_LINK_SECRET: "fixture-tracking-secret-for-local-tests-only",
   CHECKOUT_LIMITER: { limit: async () => ({ success: true }) } };
 beforeEach(async () => {
-  await env.DB.batch([base, companions, postcards, tracking, delivery, stripeDelivery, coupons, stripePromotions].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
+  await env.DB.batch([base, companions, postcards, tracking, delivery, stripeDelivery, coupons, stripePromotions, languageSchema].join("\n").split(";").map(s => s.trim()).filter(Boolean).map(s => env.DB.prepare(s)));
 });
 afterEach(async () => { vi.restoreAllMocks(); await reset(); });
+
+it("publishes reciprocal language alternatives while keeping private routes out of the sitemap", () => {
+  const xml = sitemap(origin);
+  for (const locale of locales) {
+    const prefix = locale === "fr" ? "" : "/" + locale;
+    expect(localeFromPath(`${prefix || "/index"}.html`)).toBe(locale);
+    expect(localizedPath(`${prefix || ""}/aventures.html`, locale)).toBe(prefix + "/aventures");
+    expect(xml).toContain(`<loc>${origin}${prefix}/</loc>`);
+    expect(xml).toContain(`hreflang="${locale}"`);
+    expect(isPrivatePage(prefix + "/suivi")).toBe(true);
+    expect(isPrivatePage(prefix + "/personnaliser.html")).toBe(true);
+    expect(isPrivatePage(prefix + "/aventures")).toBe(false);
+  }
+  expect(xml).not.toContain("/confirmation");
+  expect(xml).not.toContain("/suivi");
+});
+
+it("all translations preserve interpolation values", () => {
+  for (const locale of ["en", "de", "es"] as const) {
+    expect(Object.keys(messages[locale]).sort()).toEqual(Object.keys(messages.en).sort());
+    for (const [source, text] of Object.entries(messages[locale])) {
+      expect(text.match(/\{\d+\}/g)?.sort() ?? [], source).toEqual(source.match(/\{\d+\}/g)?.sort() ?? []);
+    }
+    expect(translator(locale)("Pour {0}", "<Alex & Sam>")).toContain("<Alex & Sam>");
+  }
+});
+
+it.each(["en", "de", "es"] as Locale[])("renders %s transactional emails and signed links in the saved language", async locale => {
+  const id = await paidOrder();
+  const link = await trackingLink(bindings, id, Date.now(), locale);
+  expect(link).toContain(`/${locale}/suivi#acces=`);
+  const response = await call("/api/tracking/access", { token: link.split("#acces=")[1] });
+  expect(response.status).toBe(200);
+  for (const kind of ["confirmation", "shipped", "access"]) {
+    const message = notificationMessage(kind, "<UNSAFE>", link, 2, "2026-11-04", "weekly", locale);
+    expect(message.html).toContain(`lang="${locale}"`);
+    expect(message.html).not.toContain("<UNSAFE>");
+    expect(message.html).toContain("&lt;UNSAFE&gt;");
+    expect(message.html).toContain(`/${locale}/suivi`);
+    expect(message.subject).not.toMatch(/Votre|expédiée/);
+    expect(message.text).not.toMatch(/Bonjour|L’équipe|À bientôt/);
+  }
+});
 function call(path: string, body?: unknown, cookie?: string, custom = bindings, requestOrigin = origin) {
   return api(new Request(origin + path, { method: body === undefined ? "GET" : "POST",
     headers: { Origin: requestOrigin, "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
