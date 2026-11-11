@@ -1,5 +1,8 @@
 ---
-import { cardPacks, formatPrice } from "../lib/catalog";
+import { getI18n } from "../lib/i18n";
+const { t, localPath, catalog } = getI18n(Astro.url);
+const { cardPacks, formatPrice } = catalog;
+
 interface Props { selectable?: boolean; }
 const { selectable = false } = Astro.props;
 ---
@@ -7,14 +10,14 @@ const { selectable = false } = Astro.props;
   {cardPacks.map((pack) => selectable ? (
     <label class="pack-option">
       <input type="radio" name="quantity" value={pack.quantity} checked={pack.quantity === 1} required />
-      <strong>{pack.quantity} {pack.quantity === 1 ? "carte" : "cartes"}</strong>
-      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / carte</small>
+      <strong>{pack.quantity} {pack.quantity === 1 ? t("carte") : t("cartes")}</strong>
+      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / {t("carte")}</small>
     </label>
   ) : (
-    <a class:list={["pack-option", { "pack-highlight": pack.quantity === 5 }]} href={`/personnaliser?cartes=${pack.quantity}`}>
-      <span class="eyebrow">{pack.name}</span><strong>{pack.quantity} {pack.quantity === 1 ? "carte" : "cartes"}</strong>
-      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / carte</small>
-      <span class="pack-duration">{pack.quantity === 1 ? "Une jolie surprise" : `${pack.quantity} rendez-vous, un par semaine`}</span><span class="text-link">Choisir →</span>
+    <a class:list={["pack-option", { "pack-highlight": pack.quantity === 5 }]} href={localPath(`/personnaliser?cartes=${pack.quantity}`)}>
+      <span class="eyebrow">{pack.name}</span><strong>{pack.quantity} {pack.quantity === 1 ? t("carte") : t("cartes")}</strong>
+      <span class="pack-total">{formatPrice(pack.totalCents)}</span><small>{formatPrice(pack.unitCents)} / {t("carte")}</small>
+      <span class="pack-duration">{pack.quantity === 1 ? t("Une jolie surprise") : t("{0} rendez-vous, un par semaine", pack.quantity)}</span><span class="text-link">{t("Choisir →")}</span>
     </a>
   ))}
 </div>

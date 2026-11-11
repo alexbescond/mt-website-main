@@ -1,3 +1,4 @@
+import { languageNames } from "../lib/i18n/core";
 import { deliveryLabel } from "../lib/catalog";
 import { addDays, cardPresentation, cardStates, displayDate, parisDate, type TrackingCard } from "../lib/tracking-model";
 import type { AdminOrder } from "../lib/tracking";
@@ -44,7 +45,7 @@ function renderOrder(order: AdminOrder) {
   appendChildren(details, element("summary", "", "Coordonnées, photo et personnalisation"));
   const customer = element("div", "admin-customer");
   const address = element("div"); appendChildren(address, element("p", "", order.address), element("p", "", order.email));
-  const personal = element("div"); appendChildren(personal, element("p", "", "Pour " + order.child + " · " + (order.companionName || order.companion)), element("p", "", order.notes || "Aucune précision supplémentaire."));
+  const personal = element("div"); appendChildren(personal, element("p", "", "Pour " + order.child + " · " + (order.companionName || order.companion)), element("p", "", "Langue des cartes : " + languageNames[order.cardLocale || "fr"]), element("p", "", order.notes || "Aucune précision supplémentaire."));
   if (order.hasPhoto && !demo) {
     const photo = element("a", "tracking-text-button", "Ouvrir la photo du compagnon");
     photo.href = "/api/admin/orders/" + order.id + "/photo"; photo.target = "_blank"; photo.rel = "noopener"; appendChildren(personal, photo);

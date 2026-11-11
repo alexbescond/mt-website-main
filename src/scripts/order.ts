@@ -1,19 +1,7 @@
-import {
-  adventures,
-  adventurePreview,
-  companions,
-  isAdventureId,
-  isCompanionId,
-  storyTitle,
-  getOrderPrice,
-  deliveryLabel,
-  isDeliveryMode,
-  type DeliveryMode,
-  formatPrice,
-  dispatchLabel,
-  type AdventureId,
-  type CompanionId,
-} from "../lib/catalog";
+import { locale, t, localPath, catalog } from "./i18n";
+const { adventures, adventurePreview, companions, storyTitle, deliveryLabel, formatPrice, dispatchLabel } = catalog;
+import { isAdventureId, isCompanionId, getOrderPrice, isDeliveryMode, type DeliveryMode, type AdventureId, type CompanionId } from "../lib/catalog";
+import { isLocale, languageNames } from "../lib/i18n/core";
 const form = document.querySelector<HTMLFormElement>("#order-form")!;
 const panels = [...form.querySelectorAll<HTMLElement>("[data-step]")];
 const next = document.querySelector<HTMLButtonElement>("#next-step")!;
@@ -63,12 +51,12 @@ function updatePlan() {
   if (single) form.querySelector<HTMLInputElement>('input[name="deliveryMode"][value="weekly"]')!.checked = true;
   const weekly = getOrderPrice(pack.quantity);
   const together = getOrderPrice(pack.quantity, "together");
-  document.querySelector("#weekly-price")!.textContent = `${formatPrice(weekly.totalCents)} au total`;
-  document.querySelector("#together-price")!.textContent = `${formatPrice(together.totalCents)} au total · ${formatPrice(together.discountCents)} économisés`;
+  document.querySelector("#weekly-price")!.textContent = t("{0} au total", formatPrice(weekly.totalCents));
+  document.querySelector("#together-price")!.textContent = t("{0} au total · {1} économisés", formatPrice(together.totalCents), formatPrice(together.discountCents));
   form.querySelectorAll<HTMLElement>("[data-adventure-label]").forEach((label, index) => {
-    label.textContent = index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index, chosenDelivery())}`;
+    label.textContent = index === 0 ? t("Quelle destination pour son compagnon ?") : t("Carte {0} · {1}", index + 1, dispatchLabel(index, chosenDelivery()));
   });
-  document.querySelector("#first-card-timing")!.textContent = `Carte 1 · ${dispatchLabel(0, chosenDelivery())}`;
+  document.querySelector("#first-card-timing")!.textContent = t("Carte 1 · {0}", dispatchLabel(0, chosenDelivery()));
   updateAdventureOptions();
 }
 function updateAdventureOptions() {
@@ -93,7 +81,7 @@ function updateAdventureOptions() {
       const taken = owner !== undefined && active[owner] !== select;
       option.disabled = taken;
       option.textContent = adventures[option.value].short +
-        (taken ? ` — déjà choisie · carte ${owner + 1}` : "");
+        (taken ? t(" — déjà choisie · carte {0}", owner + 1) : "");
     }
   });
 }
@@ -102,6 +90,7 @@ function chosenCompanion() {
   return isCompanionId(value) ? value : "tetine";
 }
 const params = new URLSearchParams(location.search);
+if (isLocale(params.get("langue"))) field("cardLocale").value = params.get("langue")!;
 if (isCompanionId(params.get("compagnon")))
   form.querySelector<HTMLInputElement>(
     `input[name="companion"][value="${params.get("compagnon")}"]`,
@@ -127,22 +116,22 @@ function summary() {
   image.alt = preview.alt;
   document.querySelector("#summary-title")!.textContent = pack.quantity === 1
     ? storyTitle(itinerary[0], companion)
-    : `${companions[companion].character} — Son voyage en ${pack.quantity} cartes`;
+    : t("{0} — Son voyage en {1} cartes", companions[companion].character, pack.quantity);
   updateCardPreviews(itinerary, companion);
   document.querySelector("#companion-photo-label")!.textContent =
-    companion === "doudou" ? "La photo de son doudou" : "La photo de sa tétine";
+    companion === "doudou" ? t("La photo de son doudou") : t("La photo de sa tétine");
   document.querySelector("#summary-caption")!.textContent =
     preview.caption;
   if (!field("pacifierPhoto").files?.length)
     field("pacifierPhoto")
       .closest(".upload-zone")!
       .querySelector(".upload-title")!.textContent =
-      `Choisir une photo de ${companions[companion].character}`;
+      t("Choisir une photo de {0}", companions[companion].character);
   const child = field("childName").value.trim();
   document.querySelector("#summary-child")!.textContent = child
-    ? `Une histoire pour ${child}`
-    : "Des nouvelles de son compagnon";
-  document.querySelector("#summary-quantity")!.textContent = `${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} × ${formatPrice(getOrderPrice(pack.quantity).unitCents)}`;
+    ? t("Une histoire pour {0}", child)
+    : t("Des nouvelles de son compagnon");
+  document.querySelector("#summary-quantity")!.textContent = `${pack.quantity} ${pack.quantity === 1 ? t("carte") : t("cartes")} × ${formatPrice(getOrderPrice(pack.quantity).unitCents)}`;
   document.querySelector("#summary-subtotal")!.textContent = formatPrice(pack.baseTotalCents);
   document.querySelector<HTMLElement>("#summary-discount-row")!.hidden = pack.discountCents === 0;
   document.querySelector("#summary-discount")!.textContent = `−${formatPrice(pack.discountCents)}`;
@@ -163,12 +152,12 @@ function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
     const card = document.createElement("li");
     const image = document.createElement("img");
     image.src = preview.image;
-    image.alt = `Carte ${index + 1} : ${preview.alt}`;
+    image.alt = t("Carte {0} : {1}", index + 1, preview.alt);
     image.width = 600;
     image.height = 400;
     const number = document.createElement("span");
     number.className = "summary-card-number";
-    number.textContent = `Carte ${index + 1}`;
+    number.textContent = t("Carte {0}", index + 1);
     const title = document.createElement("strong");
     title.textContent = adventures[adventure].short;
     const timing = document.createElement("small");
@@ -177,39 +166,41 @@ function updateCardPreviews(itinerary: AdventureId[], companion: CompanionId) {
     return card;
   }) : []));
   document.querySelector("#summary-bundle-caption")!.textContent =
-    `Exemples illustrés avec ${companions[companion].character}. Vos cartes seront créées à partir de la photo de son compagnon.`;
+    t("Exemples illustrés avec {0}. Vos cartes seront créées à partir de la photo de son compagnon.", companions[companion].character);
 }
 function review() {
   const pack = chosenPack();
   const list = document.querySelector("#review-plan")!;
   list.replaceChildren(...selectedAdventures().map((id, index) => {
     const item = document.createElement("li");
-    item.textContent = `Carte ${index + 1} · ${dispatchLabel(index, chosenDelivery())} · ${adventures[id].short}`;
+    item.textContent = t("Carte {0} · {1} · {2}", index + 1, dispatchLabel(index, chosenDelivery()), adventures[id].short);
     return item;
   }));
   document.querySelector("#review-book")!.textContent = storyTitle(
     selectedAdventures()[0],
     chosenCompanion(),
-  ) + ` · ${pack.quantity} ${pack.quantity === 1 ? "carte" : "cartes"} · ${formatPrice(chosenPack().totalCents)}`;
+  ) + ` · ${pack.quantity} ${pack.quantity === 1 ? t("carte") : t("cartes")} · ${formatPrice(chosenPack().totalCents)}`;
   document.querySelector("#review-child")!.textContent =
-    `Pour ${field("childName").value.trim()}`;
+    t("Pour {0}", field("childName").value.trim());
   document.querySelector("#review-companion")!.textContent =
     `${companions[chosenCompanion()].label}${field("companionName").value.trim() ? ` · ${field("companionName").value.trim()}` : ""}`;
   document.querySelector("#review-notes")!.textContent = field("notes").value;
   document.querySelector("#review-delivery")!.textContent = deliveryLabel(pack.quantity, chosenDelivery());
+  const cardLocale = field("cardLocale").value;
+  document.querySelector("#review-language")!.textContent = t("Langue des cartes") + " : " + languageNames[isLocale(cardLocale) ? cardLocale : locale];
   const photos = document.querySelector("#review-photos")!;
   photos.replaceChildren();
   if (photoUrl) {
     const img = document.createElement("img");
     img.src = photoUrl;
-    img.alt = "Son compagnon";
+    img.alt = t("Son compagnon");
     photos.appendChild(img);
   }
 }
 function updatePaymentLabel() {
   const price = formatPrice(chosenPack().totalCents);
-  next.textContent = mode === "demo" ? "Terminer la démonstration →" : mode === "test" ? `Tester la commande avec Stripe · ${price} →` : `Adresse et paiement · ${price} →`;
-  document.querySelector("#payment-note")!.textContent = mode === "demo" ? "La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché." : `Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Montant avant code promo : ${price}, frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. Aucun abonnement.`;
+  next.textContent = mode === "demo" ? t("Terminer la démonstration →") : mode === "test" ? t("Tester la commande avec Stripe · {0} →", price) : t("Adresse et paiement · {0} →", price);
+  document.querySelector("#payment-note")!.textContent = mode === "demo" ? t("La démonstration s’arrête ici : aucune adresse n’est demandée et aucun paiement ni envoi postal n’est déclenché.") : t("Vous renseignerez votre nom, votre e-mail et votre adresse de livraison sur la page sécurisée Stripe. Montant avant code promo : {0}, frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. Aucun abonnement.", price);
 }
 function go(index: number) {
   step = index;
@@ -221,7 +212,7 @@ function go(index: number) {
   previous.hidden = index === 0;
   error.hidden = true;
   if (index === 1) updatePaymentLabel();
-  else next.textContent = "Continuer →";
+  else next.textContent = t("Continuer →");
   if (index === 1) review();
   panels[index]
     .querySelector<HTMLElement>("h2")!
@@ -278,7 +269,7 @@ form.addEventListener("input", () => {
     ) {
       input.value = "";
       message.textContent =
-        "Choisissez une image JPG, PNG ou WebP de moins de 5 Mo.";
+        t("Choisissez une image JPG, PNG ou WebP de moins de 5 Mo.");
       input.setCustomValidity(message.textContent);
       return;
     }
@@ -289,7 +280,7 @@ form.addEventListener("input", () => {
       zone.querySelector(".upload-title")!.textContent = file.name;
     } else
       zone.querySelector(".upload-title")!.textContent =
-        `Choisir une photo de ${companions[chosenCompanion()].character}`;
+        t("Choisir une photo de {0}", companions[chosenCompanion()].character);
   });
 }
 previous.addEventListener("click", () => go(step - 1));
@@ -307,12 +298,12 @@ form.addEventListener("submit", async (event) => {
   }
   if (!validatePanel(0)) return;
   if (mode === "demo") {
-    location.assign("/confirmation?demo=1");
+    location.assign(localPath("/confirmation?demo=1"));
     return;
   }
   if (mode !== "test" && mode !== "live") {
     showError(
-      "Le paiement est temporairement indisponible. Réessayez plus tard.",
+      t("Le paiement est temporairement indisponible. Réessayez plus tard."),
     );
     return;
   }
@@ -320,7 +311,7 @@ form.addEventListener("submit", async (event) => {
   next.disabled = true;
   previous.disabled = true;
   const oldLabel = next.textContent;
-  next.textContent = "Préparation de la commande…";
+  next.textContent = t("Préparation de la commande…");
   error.hidden = true;
   const lockedControls: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement)[] = [];
   for (const control of form.querySelectorAll("input,select,textarea,button")) {
@@ -334,24 +325,25 @@ form.addEventListener("submit", async (event) => {
     lockedControls.forEach(control => { control.disabled = true; });
     const response = await fetch("/api/checkout", {
       method: "POST",
+      headers: { "Accept-Language": locale },
       body: payload,
     });
     const data = (await response.json()) as { url?: string; error?: string };
     if (!response.ok || !data.url)
       throw new Error(
         data.error ||
-          "Impossible de préparer le paiement. Vos informations sont conservées sur cette page.",
+          t("Impossible de préparer le paiement. Vos informations sont conservées sur cette page."),
       );
     const target = new URL(data.url);
     if (
       target.protocol !== "https:" ||
       target.hostname !== "checkout.stripe.com"
     )
-      throw new Error("Lien de paiement invalide.");
+      throw new Error(t("Lien de paiement invalide."));
     location.assign(target.href);
   } catch (e) {
     showError(
-      e instanceof Error ? e.message : "Une erreur est survenue. Réessayez.",
+      e instanceof Error ? e.message : t("Une erreur est survenue. Réessayez."),
     );
     busy = false;
     lockedControls.forEach(control => { control.disabled = false; });
@@ -367,7 +359,7 @@ summary();
 async function initialize() {
   try {
     const response = await fetch("/api/config");
-    if (!response.ok) throw new Error("Configuration indisponible");
+    if (!response.ok) throw new Error(t("Configuration indisponible"));
     const data = (await response.json()) as {
       mode: string;
       available: boolean;
@@ -376,25 +368,25 @@ async function initialize() {
     document.querySelector<HTMLElement>("#stripe-promo-note")!.hidden = mode === "demo" || !data.available;
     if (mode === "demo") {
       modeNotice.textContent =
-        "Version de démonstration · Aucun paiement ni envoi de photos. Vous pouvez essayer toutes les étapes.";
+        t("Version de démonstration · Aucun paiement ni envoi de photos. Vous pouvez essayer toutes les étapes.");
       next.disabled = false;
     } else if (data.available) {
       modeNotice.textContent =
         mode === "test"
-          ? "Mode test Stripe · Utilisez des données fictives et une carte de test. Aucun débit réel."
-          : "Vos cartes seront créées à partir des informations ci-dessous.";
+          ? t("Mode test Stripe · Utilisez des données fictives et une carte de test. Aucun débit réel.")
+          : t("Vos cartes seront créées à partir des informations ci-dessous.");
       document.querySelector("#payment-note")!.textContent =
         mode === "test"
-          ? "Vous serez redirigé vers Stripe en mode test. Aucune somme ne sera débitée."
-          : `Vous serez redirigé vers Stripe pour régler ${formatPrice(chosenPack().totalCents)}. Vos informations bancaires ne transitent pas par notre site.`;
+          ? t("Vous serez redirigé vers Stripe en mode test. Aucune somme ne sera débitée.")
+          : t("Vous serez redirigé vers Stripe pour régler {0}. Vos informations bancaires ne transitent pas par notre site.", formatPrice(chosenPack().totalCents));
       next.disabled = false;
     } else {
       modeNotice.textContent =
-        "Les commandes ne sont pas encore ouvertes. Revenez bientôt pour préparer le voyage de son compagnon.";
+        t("Les commandes ne sont pas encore ouvertes. Revenez bientôt pour préparer le voyage de son compagnon.");
     }
   } catch {
     modeNotice.textContent =
-      "Le formulaire est momentanément indisponible. Rechargez la page pour réessayer.";
+      t("Le formulaire est momentanément indisponible. Rechargez la page pour réessayer.");
   }
 }
 void initialize();

@@ -1,35 +1,29 @@
 ---
+import { getI18n } from "../lib/i18n";
+const { t, localPath } = getI18n(Astro.url);
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 ---
 
-<Base title="Le voyage de son compagnon" minimal>
+<Base title={t("Le voyage de son compagnon")} minimal>
   <section class="wrap status-page">
     <Icon name="plane" size={48} />
-    <span class="eyebrow" id="status-label">
-      LE DÉBUT DE SON AVENTURE
-    </span>
-    <h1 id="status-title">
-      Un instant,
-      <br />
-      <em>on vérifie le billet.</em>
+    <span class="eyebrow" id="status-label">{t(" LE DÉBUT DE SON AVENTURE ")}</span>
+    <h1 id="status-title">{t(" Un instant, ")}<br />
+      <em>{t("on vérifie le billet.")}</em>
     </h1>
-    <p id="status-copy" role="status">
-      Nous vérifions la confirmation de votre paiement.
-    </p>
+    <p id="status-copy" role="status">{t(" Nous vérifions la confirmation de votre paiement. ")}</p>
     <p id="order-reference"></p>
-    <a id="follow-cards" class="button" href="/suivi?confirmation=1" hidden>Suivre mes cartes →</a>
-    <button id="retry-status" class="button button-secondary" hidden>
-      Vérifier à nouveau
-    </button>
-    <a class="button" href="/">
-      Retour aux aventures <Icon name="arrow" size={18} />
+    <a id="follow-cards" class="button" href={localPath("/suivi?confirmation=1")} hidden>{t("Suivre mes cartes →")}</a>
+    <button id="retry-status" class="button button-secondary" hidden>{t(" Vérifier à nouveau ")}</button>
+    <a class="button" href={localPath("/")}>{t(" Retour aux aventures ")}<Icon name="arrow" size={18} />
     </a>
     <noscript>
-      <p>Activez JavaScript pour vérifier l’état de votre commande.</p>
+      <p>{t("Activez JavaScript pour vérifier l’état de votre commande.")}</p>
     </noscript>
   </section>
   <script>
+    import { t, localPath } from "../scripts/i18n";
     const title = document.querySelector("#status-title")!;
     const copy = document.querySelector("#status-copy")!;
     const retry = document.querySelector<HTMLButtonElement>("#retry-status")!;
@@ -37,14 +31,14 @@ import Icon from "../components/Icon.astro";
     async function check() {
       retry.hidden = true;
       if (new URLSearchParams(location.search).get("demo") === "1") {
-        title.textContent = "Le voyage est prêt à être imaginé.";
+        title.textContent = t("Le voyage est prêt à être imaginé.");
         document.querySelector("#status-label")!.textContent =
-          "DÉMONSTRATION TERMINÉE";
+          t("DÉMONSTRATION TERMINÉE");
         copy.textContent =
-          "Vous avez parcouru toutes les étapes ! Aucun paiement, aucune commande et aucun envoi de photos n’ont été effectués.";
+          t("Vous avez parcouru toutes les étapes ! Aucun paiement, aucune commande et aucun envoi de photos n’ont été effectués.");
         const follow = document.querySelector<HTMLAnchorElement>("#follow-cards")!;
-        follow.href = "/suivi?demo=1";
-        follow.textContent = "Découvrir un exemple de suivi →";
+        follow.href = localPath("/suivi?demo=1");
+        follow.textContent = t("Découvrir un exemple de suivi →");
         follow.hidden = false;
         return;
       }
@@ -56,29 +50,29 @@ import Icon from "../components/Icon.astro";
           free?: boolean;
           deliveryStatus?: string;
         };
-        if (!response.ok) throw new Error("Commande introuvable");
+        if (!response.ok) throw new Error(t("Commande introuvable"));
         if (data.status === "paid") {
           document.querySelector<HTMLAnchorElement>("#follow-cards")!.hidden = false;
-          title.textContent = "Le grand voyage peut commencer.";
+          title.textContent = t("Le grand voyage peut commencer.");
           copy.textContent =
-            (data.free ? "Votre commande offerte est confirmée. Aucun paiement n’a été nécessaire. " : "Votre paiement est confirmé. ") + "Votre commande est enregistrée pour la préparation de vos cartes postales. Elles seront expédiées selon le mode d’envoi choisi lors de votre commande.";
+            (data.free ? t("Votre commande offerte est confirmée. Aucun paiement n’a été nécessaire. ") : t("Votre paiement est confirmé. ")) + t("Votre commande est enregistrée pour la préparation de vos cartes postales. Elles seront expédiées selon le mode d’envoi choisi lors de votre commande.");
           if (data.deliveryStatus === "needs_review") {
-            title.textContent = data.free ? "Votre commande offerte est confirmée." : "Votre paiement est confirmé.";
-            copy.textContent = "Vos coordonnées de livraison nécessitent une vérification avant la préparation. Votre commande est bien enregistrée : ne repassez pas commande. Conservez votre référence.";
+            title.textContent = data.free ? t("Votre commande offerte est confirmée.") : t("Votre paiement est confirmé.");
+            copy.textContent = t("Vos coordonnées de livraison nécessitent une vérification avant la préparation. Votre commande est bien enregistrée : ne repassez pas commande. Conservez votre référence.");
           }
           document.querySelector("#order-reference")!.textContent =
-            `Référence : ${data.reference}`;
+            t("Référence : {0}", data.reference ?? "");
           return;
         }
         if (data.status === "expired") {
-          title.textContent = "Ce billet a expiré.";
+          title.textContent = t("Ce billet a expiré.");
           copy.textContent =
-            "Cette session de paiement a expiré. Vous pouvez préparer une nouvelle commande.";
+            t("Cette session de paiement a expiré. Vous pouvez préparer une nouvelle commande.");
           return;
         }
-        title.textContent = "Votre confirmation arrive.";
+        title.textContent = t("Votre confirmation arrive.");
         copy.textContent =
-          "Le paiement n’est pas encore confirmé. Ne repassez pas commande : la validation peut prendre quelques instants.";
+          t("Le paiement n’est pas encore confirmé. Ne repassez pas commande : la validation peut prendre quelques instants.");
         if (++attempts < 8) {
           setTimeout(() => {
             void check();
@@ -87,9 +81,9 @@ import Icon from "../components/Icon.astro";
           retry.hidden = false;
         }
       } catch {
-        title.textContent = "Retrouvons votre voyage.";
+        title.textContent = t("Retrouvons votre voyage.");
         copy.textContent =
-          "Nous ne pouvons pas consulter cette commande dans ce navigateur. Si vous avez payé, conservez le reçu Stripe et ne repassez pas commande.";
+          t("Nous ne pouvons pas consulter cette commande dans ce navigateur. Si vous avez payé, conservez le reçu Stripe et ne repassez pas commande.");
         retry.hidden = false;
       }
     }

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { InputError, limitedBody, sha256 } from "./validation";
+import { localizedPath, type Locale } from "./i18n/core";
 
 const DAY = 86400000;
 export function cookieValue(request: Request, name: string) {
@@ -68,12 +69,12 @@ async function linkKey(env: AppEnv) {
     throw new InputError("L’accès par e-mail n’est pas encore disponible.", 503);
   return crypto.subtle.importKey("raw", new TextEncoder().encode(env.TRACKING_LINK_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
-export async function trackingLink(env: AppEnv, orderId: string, now = Date.now()) {
+export async function trackingLink(env: AppEnv, orderId: string, now = Date.now(), locale: Locale = "fr") {
   const payload = orderId + "." + (now + 30 * DAY);
   const signature = await crypto.subtle.sign("HMAC", await linkKey(env), new TextEncoder().encode(payload));
   const hex = Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
   // The fragment is never sent in HTTP URLs or Referer headers.
-  return env.SITE_ORIGIN + "/suivi#acces=" + payload + "." + hex;
+  return env.SITE_ORIGIN + localizedPath("/suivi#acces=", locale) + payload + "." + hex;
 }
 export async function exchangeTrackingLink(request: Request, env: AppEnv) {
   const body = await readJson(request);

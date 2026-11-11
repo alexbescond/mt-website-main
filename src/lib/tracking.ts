@@ -2,6 +2,7 @@ import { InputError } from "./validation";
 import { limitAccess, readJson, requireAdmin, trackingOrderId } from "./tracking-auth";
 import { parisDate, type TrackingCard, type TrackingOrder } from "./tracking-model";
 import type { CompanionId, DeliveryMode } from "./catalog";
+import { requestLocale, translator, type Locale } from "./i18n";
 
 interface StoredTrackingOrder {
   id: string;
@@ -11,6 +12,8 @@ interface StoredTrackingOrder {
   paid_at: number;
   delivery_status: "pending" | "ready" | "needs_review";
   delivery_mode: DeliveryMode;
+  locale: Locale;
+  card_locale: Locale;
 }
 export interface AdminOrder extends TrackingOrder {
   id: string;
@@ -23,7 +26,7 @@ export interface AdminOrder extends TrackingOrder {
   notifications: { kind: string; card_position: number | null; status: string; error_code: string | null }[];
 }
 function publicOrder(row: StoredTrackingOrder, cards: TrackingCard[]): TrackingOrder {
-  return { reference: row.id.slice(0, 8).toUpperCase(), companion: row.companion_type,
+  return { reference: row.id.slice(0, 8).toUpperCase(), companion: row.companion_type, locale: row.locale, cardLocale: row.card_locale,
     companionName: row.companion_name, quantity: row.card_quantity, paidAt: row.paid_at, deliveryStatus: row.delivery_status, deliveryMode: row.delivery_mode, cards };
 }
 async function cardsFor(env: AppEnv, id: string) {
@@ -33,7 +36,7 @@ async function cardsFor(env: AppEnv, id: string) {
 }
 export async function customerTracking(request: Request, env: AppEnv) {
   const id = await trackingOrderId(request, env);
-  const row = await env.DB.prepare("SELECT id,companion_type,companion_name,card_quantity,paid_at,delivery_status,delivery_mode FROM orders WHERE id=? AND status='paid' AND product_type='postcards' AND payment_mode=?")
+  const row = await env.DB.prepare("SELECT id,companion_type,companion_name,card_quantity,paid_at,delivery_status,delivery_mode,locale,card_locale FROM orders WHERE id=? AND status='paid' AND product_type='postcards' AND payment_mode=?")
     .bind(id, env.CHECKOUT_MODE).first<StoredTrackingOrder>();
   if (!row) throw new InputError("Cette commande n’est pas disponible.", 404);
   return Response.json(publicOrder(row, await cardsFor(env, id)));
@@ -61,7 +64,7 @@ export async function requestTrackingEmail(request: Request, env: AppEnv) {
         .bind(id + "/access/" + Math.floor(now / 900000), id, now, now).run();
     }
   }
-  return Response.json({ message: "Si ces informations correspondent à une commande, un lien vous sera envoyé. Pensez à vérifier vos courriers indésirables." }, { status: 202 });
+  return Response.json({ message: translator(requestLocale(request))("Si ces informations correspondent à une commande, un lien vous sera envoyé. Pensez à vérifier vos courriers indésirables.") }, { status: 202 });
 }
 export async function listAdminOrders(request: Request, env: AppEnv) {
   await requireAdmin(request, env);

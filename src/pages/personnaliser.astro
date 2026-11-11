@@ -1,54 +1,43 @@
 ---
+import { getI18n, locales, languageNames } from "../lib/i18n";
+const { locale, t, localPath, catalog } = getI18n(Astro.url);
+const { adventures, companions, dispatchLabel, formatPrice } = catalog;
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import { adventures, companions, dispatchLabel, TOGETHER_DISCOUNT_CENTS, formatPrice } from "../lib/catalog";
+import { TOGETHER_DISCOUNT_CENTS } from "../lib/catalog";
 import CardPacks from "../components/CardPacks.astro";
 import "../styles/order.css";
 ---
 
-<Base title="Créez ses cartes postales" minimal>
+<Base title={t("Créez ses cartes postales")} minimal>
   <div class="wrap order-page">
     <div class="order-heading">
-      <span class="eyebrow">DES NOUVELLES RIEN QUE POUR LUI</span>
-      <h1>
-        Préparons le voyage
-        <br />
-        de <em>son compagnon.</em>
+      <span class="eyebrow">{t("DES NOUVELLES RIEN QUE POUR LUI")}</span>
+      <h1>{t(" Préparons le voyage ")}<br />{t(" de ")}<em>{t("son compagnon.")}</em>
       </h1>
-      <p>De 1 à 5 cartes, à recevoir chaque semaine ou toutes ensemble.</p>
+      <p>{t("De 1 à 5 cartes, à recevoir chaque semaine ou toutes ensemble.")}</p>
     </div>
-    <div id="mode-notice" class="notice" role="status">
-      Chargement du parcours…
-    </div>
+    <div id="mode-notice" class="notice" role="status">{t(" Chargement du parcours… ")}</div>
     <noscript>
-      <p class="notice">
-        Activez JavaScript pour personnaliser vos cartes et joindre vos photos.
-      </p>
+      <p class="notice">{t(" Activez JavaScript pour personnaliser vos cartes et joindre vos photos. ")}</p>
     </noscript>
-    <div id="cancel-notice" class="notice" hidden>
-      Le paiement a été interrompu. Aucun paiement n’est confirmé. Vous pouvez
-      reprendre votre commande ci-dessous.
-    </div>
-    <ol class="order-steps" aria-label="Étapes de personnalisation">
+    <div id="cancel-notice" class="notice" hidden>{t(" Le paiement a été interrompu. Aucun paiement n’est confirmé. Vous pouvez reprendre votre commande ci-dessous. ")}</div>
+    <ol class="order-steps" aria-label={t("Étapes de personnalisation")}>
       <li aria-current="step">
-        <span>1</span> Ses cartes
-      </li>
+        <span>1</span>{t(" Ses cartes ")}</li>
       <li>
-        <span>2</span> Le récapitulatif
-      </li>
+        <span>2</span>{t(" Le récapitulatif ")}</li>
       <li>
-        <span>3</span> Adresse et paiement · Stripe
-      </li>
+        <span>3</span>{t(" Adresse et paiement · Stripe ")}</li>
     </ol>
     <div class="order-grid">
       <form id="order-form" novalidate>
+        <input type="hidden" name="locale" value={locale} />
         <section data-step="0" class="form-panel">
-          <h2 tabindex="-1">Faisons connaissance.</h2>
-          <p class="form-intro">
-            Tout commence par votre enfant et le petit héros de son histoire.
-          </p>
+          <h2 tabindex="-1">{t("Faisons connaissance.")}</h2>
+          <p class="form-intro">{t(" Tout commence par votre enfant et le petit héros de son histoire. ")}</p>
           <fieldset class="companion-field">
-            <legend>Qui sera le héros de son histoire ?</legend>
+            <legend>{t("Qui sera le héros de son histoire ?")}</legend>
             <div class="companion-options">
               {Object.entries(companions).map(([id, companion]) => (
                 <label class="companion-option">
@@ -65,73 +54,75 @@ import "../styles/order.css";
               ))}
             </div>
           </fieldset>
-          <label class="field">
-            Le petit nom de son compagnon{" "}
-            <span class="optional">facultatif</span>
+          <label class="field">{t(" Le petit nom de son compagnon")}{" "}
+            <span class="optional">{t("facultatif")}</span>
             <input
               name="companionName"
               autocomplete="off"
               maxlength="60"
-              placeholder="Par exemple, Lapinou ou Titi"
+              placeholder={t("Par exemple, Lapinou ou Titi")}
             />
-            <small>Un surnom que l’on pourra glisser dans l’histoire.</small>
+            <small>{t("Un surnom que l’on pourra glisser dans l’histoire.")}</small>
+          </label>
+          <label class="field">
+            {t("Langue des cartes")}
+            <select name="cardLocale" required>
+              {locales.map(language => <option value={language} selected={language === locale}>{languageNames[language]}</option>)}
+            </select>
+            <small>{t("Les petits mots seront écrits dans cette langue.")}</small>
           </label>
           <fieldset class="pack-field">
-            <legend>Combien de cartes pour son voyage ?</legend>
+            <legend>{t("Combien de cartes pour son voyage ?")}</legend>
             <CardPacks selectable />
-            <p class="form-intro">Un paiement unique. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. Aucun abonnement.</p>
+            <p class="form-intro">{t("Un paiement unique. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. Aucun abonnement.")}</p>
           </fieldset>
           <fieldset id="delivery-options" class="delivery-field">
-            <legend>À quel rythme recevoir ses cartes ?</legend>
+            <legend>{t("À quel rythme recevoir ses cartes ?")}</legend>
             <div class="delivery-options">
               <label class="delivery-option">
                 <input type="radio" name="deliveryMode" value="weekly" checked required />
-                <span><strong>Une carte tous les 7 jours</strong><small>Un petit rendez-vous chaque semaine, à partir du premier envoi.</small><b id="weekly-price"></b></span>
+                <span><strong>{t("Une carte tous les 7 jours")}</strong><small>{t("Un petit rendez-vous chaque semaine, à partir du premier envoi.")}</small><b id="weekly-price"></b></span>
               </label>
               <label class="delivery-option">
                 <input type="radio" name="deliveryMode" value="together" required />
-                <span><strong>Toutes les cartes en une fois</strong><small>Un seul envoi, puis vous les découvrez à votre rythme.</small><b>−{formatPrice(TOGETHER_DISCOUNT_CENTS)} par carte</b><small id="together-price"></small></span>
+                <span><strong>{t("Toutes les cartes en une fois")}</strong><small>{t("Un seul envoi, puis vous les découvrez à votre rythme.")}</small><b>−{formatPrice(TOGETHER_DISCOUNT_CENTS)}{t(" par carte")}</b><small id="together-price"></small></span>
               </label>
             </div>
           </fieldset>
-          <p id="single-delivery-note" class="form-intro">Une seule carte, un seul envoi. La remise pour envoi groupé est disponible à partir de 2 cartes.</p>
+          <p id="single-delivery-note" class="form-intro">{t("Une seule carte, un seul envoi. La remise pour envoi groupé est disponible à partir de 2 cartes.")}</p>
           <fieldset class="destination-field">
-            <legend>Ses aventures, dans l’ordre des envois</legend>
-            <p class="form-intro" id="adventure-help">Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Choisissez le rythme des envois ci-dessus.</p>
+            <legend>{t("Ses aventures, dans l’ordre des envois")}</legend>
+            <p class="form-intro" id="adventure-help">{t("Choisissez une aventure différente pour chaque carte. Les aventures déjà choisies sont grisées dans les autres menus. Choisissez le rythme des envois ci-dessus.")}</p>
             {[0, 1, 2, 3, 4].map((index) => (
               <label class="field adventure-field" data-card-index={index} hidden={index > 0}>
-                <span data-adventure-label={index}>{index === 0 ? "Quelle destination pour son compagnon ?" : `Carte ${index + 1} · ${dispatchLabel(index)}`}</span>
+                <span data-adventure-label={index}>{index === 0 ? t("Quelle destination pour son compagnon ?") : t("Carte {0} · {1}", index + 1, dispatchLabel(index))}</span>
                 <select id={`adventure-${index + 1}`} name="adventure" required disabled={index > 0} aria-describedby="adventure-help">
                   {Object.entries(adventures).map(([id, item], adventureIndex) => <option value={id} selected={adventureIndex === index}>{item.short}</option>)}
                 </select>
-                {index === 0 && <small id="first-card-timing">Carte 1 · Premier envoi</small>}
+                {index === 0 && <small id="first-card-timing">{t("Carte 1 · Premier envoi")}</small>}
               </label>
             ))}
           </fieldset>
-          <label class="field">
-            Le prénom de votre enfant <span class="required">*</span>
+          <label class="field">{t(" Le prénom de votre enfant ")}<span class="required">*</span>
             <input
               name="childName"
               autocomplete="off"
               maxlength="60"
-              placeholder="Par exemple, Camille"
+              placeholder={t("Par exemple, Camille")}
               required
             />
-            <small>Il apparaîtra dans les petits mots de son compagnon.</small>
+            <small>{t("Il apparaîtra dans les petits mots de son compagnon.")}</small>
           </label>
           <div class="upload-field">
             <label for="pacifierPhoto">
-              <span id="companion-photo-label">La photo de sa tétine</span>{" "}
+              <span id="companion-photo-label">{t("La photo de sa tétine")}</span>{" "}
               <span class="required">*</span>
             </label>
-            <p>
-              De face, bien éclairée, sur un fond simple : on veut reconnaître
-              tous ses petits détails.
-            </p>
+            <p>{t(" De face, bien éclairée, sur un fond simple : on veut reconnaître tous ses petits détails. ")}</p>
             <label class="upload-zone" for="pacifierPhoto">
               <Icon name="camera" size={28} />
-              <span class="upload-title">Choisir une photo de Tétine</span>
-              <small>JPG, PNG ou WebP · 5 Mo maximum</small>
+              <span class="upload-title">{t("Choisir une photo de Tétine")}</span>
+              <small>{t("JPG, PNG ou WebP · 5 Mo maximum")}</small>
               <input
                 id="pacifierPhoto"
                 name="pacifierPhoto"
@@ -142,7 +133,7 @@ import "../styles/order.css";
               />
               <img
                 class="upload-preview"
-                alt="Aperçu de la photo de son compagnon"
+                alt={t("Aperçu de la photo de son compagnon")}
                 hidden
               />
             </label>
@@ -151,41 +142,31 @@ import "../styles/order.css";
               class="field-error"
               aria-live="polite"
             ></span>
-            <p id="photo-use-notice">
-              La photo de son compagnon sert uniquement à créer vos cartes.{" "}
+            <p id="photo-use-notice">{t(" La photo de son compagnon sert uniquement à créer vos cartes.")}{" "}
               <a
-                href="/informations#confidentialite"
+                href={localPath("/informations#confidentialite")}
                 target="_blank"
                 rel="noopener"
-              >En savoir plus sur les photos</a>.
+              >{t("En savoir plus sur les photos")}</a>.
             </p>
           </div>
-          <label class="field">
-            Un petit mot pour notre équipe{" "}
-            <span class="optional">facultatif</span>
+          <label class="field">{t(" Un petit mot pour notre équipe")}{" "}
+            <span class="optional">{t("facultatif")}</span>
             <textarea
               name="notes"
               rows="3"
               maxlength="500"
-              placeholder="Une petite habitude, un détail qui compte, une préférence…"
+              placeholder={t("Une petite habitude, un détail qui compte, une préférence…")}
             ></textarea>
           </label>
         </section>
         <section data-step="1" class="form-panel" hidden>
-          <h2 tabindex="-1">
-            Tout est prêt
-            <br />
-            pour le grand départ.
-          </h2>
-          <p class="form-intro">
-            Un dernier regard avant de laisser la magie commencer.
-          </p>
+          <h2 tabindex="-1">{t(" Tout est prêt ")}<br />{t(" pour le grand départ. ")}</h2>
+          <p class="form-intro">{t(" Un dernier regard avant de laisser la magie commencer. ")}</p>
           <div class="review-section">
             <div>
-              <h3>Ses cartes</h3>
-              <button type="button" class="edit-button" data-edit="0">
-                Modifier
-              </button>
+              <h3>{t("Ses cartes")}</h3>
+              <button type="button" class="edit-button" data-edit="0">{t(" Modifier ")}</button>
             </div>
             <p id="review-book"></p>
             <ol id="review-plan" class="dispatch-plan"></ol>
@@ -196,34 +177,27 @@ import "../styles/order.css";
           </div>
           <div class="review-section">
             <div>
-              <h3>La livraison</h3>
+              <h3>{t("La livraison")}</h3>
             </div>
             <p id="review-delivery"></p>
-            <p>Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.</p>
-            <p>Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. La même adresse sera utilisée pour toutes les cartes.</p>
+            <p id="review-language"></p>
+            <p>{t("Lors du paiement, Stripe recueille votre nom, votre e-mail et votre adresse de livraison, avec des suggestions pour faciliter la saisie.")}</p>
+            <p>{t("Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse. La même adresse sera utilisée pour toutes les cartes.")}</p>
           </div>
-          <p class="field-help" id="stripe-promo-note" hidden>Vous avez un code promo ? Vous pourrez l’ajouter sur Stripe à l’étape suivante. La réduction s’affichera avant de confirmer votre commande.</p>
+          <p class="field-help" id="stripe-promo-note" hidden>{t("Vous avez un code promo ? Vous pourrez l’ajouter sur Stripe à l’étape suivante. La réduction s’affichera avant de confirmer votre commande.")}</p>
           <label class="checkbox-field">
             <input type="checkbox" name="termsConsent" required />
-            <span>
-              J’ai vérifié mes informations et j’accepte les{" "}
-              <a href="/informations#conditions" target="_blank" rel="noopener">
-                conditions de vente
-              </a>{" "}
-              et la{" "}
+            <span>{t(" J’ai vérifié mes informations et j’accepte les")}{" "}
+              <a href={localPath("/informations#conditions")} target="_blank" rel="noopener">{t(" conditions de vente ")}</a>{" "}{t(" et la")}{" "}
               <a
-                href="/informations#confidentialite"
+                href={localPath("/informations#confidentialite")}
                 target="_blank"
                 rel="noopener"
-              >
-                politique de confidentialité
-              </a>
+              >{t(" politique de confidentialité ")}</a>
               .
             </span>
           </label>
-          <p class="payment-note" id="payment-note">
-            La démonstration ne déclenche aucun paiement.
-          </p>
+          <p class="payment-note" id="payment-note">{t(" La démonstration ne déclenche aucun paiement. ")}</p>
         </section>
         <div id="form-error" role="alert" class="form-error" hidden></div>
         <div class="form-actions">
@@ -232,16 +206,11 @@ import "../styles/order.css";
             id="previous-step"
             class="button button-secondary"
             hidden
-          >
-            ← Retour
-          </button>
-          <button type="submit" id="next-step" class="button" disabled>
-            Continuer <Icon name="arrow" size={18} />
+          >{t(" ← Retour ")}</button>
+          <button type="submit" id="next-step" class="button" disabled>{t(" Continuer ")}<Icon name="arrow" size={18} />
           </button>
         </div>
-        <p class="required-note">
-          * Les informations nécessaires à la création de vos cartes.
-        </p>
+        <p class="required-note">{t(" * Les informations nécessaires à la création de vos cartes. ")}</p>
       </form>
       <aside class="order-summary">
         <div class="summary-photo" id="summary-single">
@@ -250,53 +219,48 @@ import "../styles/order.css";
             src={adventures.tropiques.image}
             width="600"
             height="400"
-            alt="Aperçu illustratif de l’aventure choisie"
+            alt={t("Aperçu illustratif de l’aventure choisie")}
           />
-          <span id="summary-caption">EXEMPLE ILLUSTRÉ AVEC TÉTINE</span>
+          <span id="summary-caption">{t("EXEMPLE ILLUSTRÉ AVEC TÉTINE")}</span>
         </div>
         <div class="summary-bundle" id="summary-bundle" hidden>
-          <span class="eyebrow">SON VOYAGE, CARTE APRÈS CARTE</span>
-          <ol id="summary-cards" class="summary-cards" aria-label="Aperçus des cartes dans l’ordre des envois"></ol>
+          <span class="eyebrow">{t("SON VOYAGE, CARTE APRÈS CARTE")}</span>
+          <ol id="summary-cards" class="summary-cards" aria-label={t("Aperçus des cartes dans l’ordre des envois")}></ol>
           <p id="summary-bundle-caption" class="summary-bundle-caption"></p>
         </div>
         <div class="summary-body">
-          <span class="eyebrow">SA PETITE CORRESPONDANCE</span>
+          <span class="eyebrow">{t("SA PETITE CORRESPONDANCE")}</span>
           <h2 id="summary-title">{adventures.tropiques.title}</h2>
-          <p id="summary-child">L’histoire de son compagnon</p>
+          <p id="summary-child">{t("L’histoire de son compagnon")}</p>
           <ul>
             <li>
-              <Icon name="check" size={17} /> Son compagnon sur chaque carte
-            </li>
+              <Icon name="check" size={17} />{t(" Son compagnon sur chaque carte ")}</li>
             <li>
-              <Icon name="check" size={17} /> Un petit mot avec son prénom
-            </li>
+              <Icon name="check" size={17} />{t(" Un petit mot avec son prénom ")}</li>
             <li>
-              <Icon name="check" size={17} /> Une vraie carte postale à garder
-            </li>
+              <Icon name="check" size={17} />{t(" Une vraie carte postale à garder ")}</li>
           </ul>
-          <p id="summary-cadence" class="summary-cadence">Un envoi postal</p>
+          <p id="summary-cadence" class="summary-cadence">{t("Un envoi postal")}</p>
           <div class="summary-line">
-            <span id="summary-quantity">1 carte × 7,00 €</span>
+            <span id="summary-quantity">{t("1 carte × 7,00 €")}</span>
             <span id="summary-subtotal">7,00 €</span>
           </div>
           <div class="summary-line summary-discount" id="summary-discount-row" hidden>
-            <span>Remise envoi groupé</span><span id="summary-discount"></span>
+            <span>{t("Remise envoi groupé")}</span><span id="summary-discount"></span>
           </div>
           <div class="summary-line">
-            <span>Livraison</span>
-            <span>Incluse</span>
+            <span>{t("Livraison")}</span>
+            <span>{t("Incluse")}</span>
           </div>
 
           <div class="summary-total">
-            <span>Total</span>
+            <span>{t("Total")}</span>
             <strong id="summary-total" aria-live="polite">7,00 €</strong>
           </div>
-          <span class="price-provisional">
-            Paiement unique · Aucun abonnement
-          </span>
+          <span class="price-provisional">{t(" Paiement unique · Aucun abonnement ")}</span>
           <div class="summary-reassurance">
             <Icon name="lock" size={17} />
-            <span>Photos privées · Paiement via Stripe</span>
+            <span>{t("Photos privées · Paiement via Stripe")}</span>
           </div>
         </div>
       </aside>

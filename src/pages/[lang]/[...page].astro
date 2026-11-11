@@ -1,0 +1,19 @@
+---
+import Home from "../index.astro";
+import Adventures from "../aventures.astro";
+import Story from "../notre-histoire.astro";
+import Information from "../informations.astro";
+import Order from "../personnaliser.astro";
+import Confirmation from "../confirmation.astro";
+import Tracking from "../suivi.astro";
+import NotFound from "../404.astro";
+
+export function getStaticPaths() {
+  return ["en", "de", "es"].flatMap(lang =>
+    [undefined, "aventures", "notre-histoire", "informations", "personnaliser", "confirmation", "suivi", "404"].map(page => ({ params: { lang, page } })),
+  );
+}
+const pages = { index: Home, aventures: Adventures, "notre-histoire": Story, informations: Information, personnaliser: Order, confirmation: Confirmation, suivi: Tracking, "404": NotFound };
+const Page = pages[(Astro.params.page || "index") as keyof typeof pages];
+---
+<Page />

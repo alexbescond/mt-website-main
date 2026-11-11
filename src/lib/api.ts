@@ -5,9 +5,11 @@ import {
   stripeWebhook,
 } from "./payments";
 import { InputError } from "./validation";
+import { requestLocale, translator } from "./i18n";
 import { adminLogin, adminLogout, exchangeTrackingLink, trackingAfterCheckout } from "./tracking-auth";
 import { adminPhoto, customerTracking, listAdminOrders, requestTrackingEmail, retryNotifications, scheduleOrder, updateCard } from "./tracking";
 export async function api(request: Request, env: AppEnv): Promise<Response> {
+  const t = translator(requestLocale(request));
   try {
     const url = new URL(request.url);
     if (url.pathname === "/api/tracking" && request.method === "GET")
@@ -65,13 +67,13 @@ export async function api(request: Request, env: AppEnv): Promise<Response> {
       ].includes(url.pathname)
     )
       return Response.json(
-        { error: "Méthode non autorisée." },
+        { error: t("Méthode non autorisée.") },
         { status: 405 },
       );
-    return Response.json({ error: "Ressource introuvable." }, { status: 404 });
+    return Response.json({ error: t("Ressource introuvable.") }, { status: 404 });
   } catch (error) {
     if (error instanceof InputError)
-      return Response.json({ error: error.message }, { status: error.status });
+      return Response.json({ error: t(error.message) }, { status: error.status });
     // Do not log payloads, Stripe responses, names, addresses, photos or secret values.
     console.error(
       JSON.stringify({
@@ -83,7 +85,7 @@ export async function api(request: Request, env: AppEnv): Promise<Response> {
     return Response.json(
       {
         error:
-          "Une erreur temporaire est survenue. Réessayez dans quelques instants.",
+          t("Une erreur temporaire est survenue. Réessayez dans quelques instants."),
       },
       { status: 503 },
     );

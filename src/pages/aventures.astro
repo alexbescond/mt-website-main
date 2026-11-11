@@ -1,36 +1,39 @@
 ---
+import { getI18n } from "../lib/i18n";
+const { t, localPath, catalog } = getI18n(Astro.url);
+const { adventures, adventurePreview } = catalog;
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import AdventureCards from "../components/AdventureCards.astro";
 import PostcardPreview from "../components/PostcardPreview.astro";
 import CardPacks from "../components/CardPacks.astro";
-import { adventures, adventurePreview, type AdventureId } from "../lib/catalog";
+import { type AdventureId } from "../lib/catalog";
 ---
-<Base title="Les aventures en cartes postales">
+<Base title={t("Les aventures en cartes postales")}>
   <section class="wrap page-intro">
-    <span class="eyebrow">DU COURRIER POUR LES PETITS EXPLORATEURS</span>
-    <h1>Des nouvelles de lui.<br /><em>Un sourire pour vous.</em></h1>
-    <p>Une vraie carte postale, son compagnon en héros et un petit mot à son prénom.<br />Choisissez de 1 à 5 aventures, à recevoir au fil des semaines ou toutes ensemble.</p>
-    <span class="page-tag"><Icon name="plane" size={17} /> Chaque semaine ou en un seul envoi</span>
+    <span class="eyebrow">{t("DU COURRIER POUR LES PETITS EXPLORATEURS")}</span>
+    <h1>{t("Des nouvelles de lui.")}<br /><em>{t("Un sourire pour vous.")}</em></h1>
+    <p>{t("Une vraie carte postale, son compagnon en héros et un petit mot à son prénom.")}<br />{t("Choisissez de 1 à 5 aventures, à recevoir au fil des semaines ou toutes ensemble.")}</p>
+    <span class="page-tag"><Icon name="plane" size={17} />{t(" Chaque semaine ou en un seul envoi")}</span>
   </section>
   <section class="wrap catalogue"><AdventureCards /></section>
   <section class="wrap section">
-    <div class="section-heading"><div><span class="eyebrow">À CHAQUE CARTE, SA DÉCOUVERTE</span><h2>Son prochain <em>terrain de jeu.</em></h2></div><p>Toutes ces aventures sont disponibles<br />dans le menu de personnalisation.</p></div>
+    <div class="section-heading"><div><span class="eyebrow">{t("À CHAQUE CARTE, SA DÉCOUVERTE")}</span><h2>{t("Son prochain ")}<em>{t("terrain de jeu.")}</em></h2></div><p>{t("Toutes ces aventures sont disponibles")}<br />{t("dans le menu de personnalisation.")}</p></div>
     <div class="adventure-menu-grid">
       {Object.entries(adventures).map(([id, item]) => (
-        <a href={`/personnaliser?aventure=${id}`}>
+        <a href={localPath(`/personnaliser?aventure=${id}`)}>
           <div class="adventure-menu-visuals">
             {(["tetine", "doudou"] as const).map(companion => {
               const preview = adventurePreview(id as AdventureId, companion);
-              return <figure><img src={preview.image} alt={preview.alt} width="600" height="400" loading="lazy" /><figcaption>{companion === "doudou" ? "Doudou" : "Tétine"}</figcaption></figure>;
+              return <figure><img src={preview.image} alt={preview.alt} width="600" height="400" loading="lazy" /><figcaption>{companion === "doudou" ? t("Doudou") : t("Tétine")}</figcaption></figure>;
             })}
           </div>
-          <h3>{item.short}</h3><p>{item.description}</p><span class="text-link">Choisir cette aventure →</span>
+          <h3>{item.short}</h3><p>{item.description}</p><span class="text-link">{t("Choisir cette aventure →")}</span>
         </a>
       ))}
     </div>
-    <p class="quiet-note">Des exemples avec Tétine et Doudou. Chaque carte sera créée à partir de la photo de son compagnon.</p>
+    <p class="quiet-note">{t("Des exemples avec Tétine et Doudou. Chaque carte sera créée à partir de la photo de son compagnon.")}</p>
   </section>
-  <section class="section wrap pricing-section"><div class="center-heading"><span class="eyebrow">UN PAIEMENT. PLUSIEURS SURPRISES.</span><h2>Combien de <em>petits bonheurs ?</em></h2><p>De 7 € à 5 € la carte. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.</p></div><CardPacks /></section>
+  <section class="section wrap pricing-section"><div class="center-heading"><span class="eyebrow">{t("UN PAIEMENT. PLUSIEURS SURPRISES.")}</span><h2>{t("Combien de ")}<em>{t("petits bonheurs ?")}</em></h2><p>{t("De 7 € à 5 € la carte. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.")}</p></div><CardPacks /></section>
   <PostcardPreview />
 </Base>

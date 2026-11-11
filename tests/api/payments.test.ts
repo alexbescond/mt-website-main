@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
+import languageSchema from "../../migrations/0009_languages.sql?raw";
 import deliverySchema from "../../migrations/0005_delivery_mode.sql?raw";
 import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
@@ -10,7 +11,7 @@ import trackingSchema from "../../migrations/0004_tracking.sql?raw";
 import stripeDeliverySchema from "../../migrations/0006_stripe_delivery.sql?raw";
 import couponSchema from "../../migrations/0007_coupons.sql?raw";
 import stripePromotionsSchema from "../../migrations/0008_stripe_promotions.sql?raw";
-const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema + "\n" + couponSchema + "\n" + stripePromotionsSchema;
+const schema = baseSchema + "\n" + companionSchema + "\n" + postcardSchema + "\n" + trackingSchema + "\n" + deliverySchema + "\n" + stripeDeliverySchema + "\n" + couponSchema + "\n" + stripePromotionsSchema + "\n" + languageSchema;
 import { api } from "../../src/lib/api";
 import { checkoutAvailable, cleanupOrders, stripeClient } from "../../src/lib/payments";
 import { limitedBody, validatePhoto } from "../../src/lib/validation";
@@ -76,7 +77,7 @@ function request(form: FormData, requestOrigin = origin) {
     body: form,
   });
 }
-function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 1) {
+function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 1, locale = "fr") {
   return vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(async (input, init) => {
@@ -101,7 +102,8 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
       expect(body.get("line_items[0][price_data][unit_amount]")).toBe(String(unitAmount));
       expect(body.get("line_items[0][quantity]")).toBe(String(quantity));
       expect(body.get("allowed_payment_method_types[0]")).toBe("card");
-      expect(body.get("success_url")).toBe(`${origin}/confirmation`);
+      expect(body.get("success_url")).toBe(`${origin}${locale === "fr" ? "" : "/" + locale}/confirmation`);
+      expect(body.get("locale")).toBe(locale);
       expect([...body.entries()].filter(([key]) => key.startsWith("shipping_address_collection[allowed_countries]")))
         .toEqual(["FR", "BE", "LU", "CH"].map((country, index) => [
           `shipping_address_collection[allowed_countries][${index}]`, country,
@@ -115,6 +117,36 @@ function mockStripe(sessionId = "cs_test_fixture", unitAmount = 700, quantity = 
       });
     });
 }
+
+it.each(["en", "de", "es"])("keeps %s checkout, customer language and card language distinct without expanding shipping", async locale => {
+  const stripe = mockStripe("cs_test_languages", 700, 1, locale);
+  const form = payload();
+  form.set("locale", locale);
+  form.set("cardLocale", "fr");
+  const result = await api(request(form), bindings);
+  expect(result.status).toBe(200);
+  expect(await env.DB.prepare("SELECT locale,card_locale FROM orders WHERE id=?").bind(form.get("attemptId")).first()).toEqual({ locale, card_locale: "fr" });
+  const body = new URLSearchParams(String(stripe.mock.calls[0][1]?.body));
+  expect(body.get("cancel_url")).toContain(`/${locale}/personnaliser?`);
+  expect(body.get("cancel_url")).toContain("langue=fr");
+  expect(body.get("metadata[card_locale]")).toBe("fr");
+  expect(body.get("line_items[0][price_data][product_data][name]")).not.toContain("Carte postale personnalisée");
+  expect(body.get("custom_text[shipping_address][message]")).not.toContain("Livraison en France");
+});
+
+it("rejects unsupported order languages before persisting photos or contacting Stripe", async () => {
+  const stripe = mockStripe();
+  const form = payload();
+  form.set("locale", "en");
+  form.set("cardLocale", "xx");
+  const req = request(form);
+  req.headers.set("Accept-Language", "en");
+  const result = await api(req, bindings);
+  expect(result.status).toBe(400);
+  expect(await result.json()).toEqual({ error: "Choose a supported language." });
+  expect(stripe).not.toHaveBeenCalled();
+  expect(await env.DB.prepare("SELECT count(*) AS count FROM orders").first("count")).toBe(0);
+});
 async function webhook(
   id: string,
   sessionId = "cs_test_fixture",

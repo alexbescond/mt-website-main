@@ -1,18 +1,20 @@
 ---
+import { getI18n } from "../lib/i18n";
+const { t, localPath } = getI18n(Astro.url);
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import AdventureCards from "../components/AdventureCards.astro";
 import PostcardPreview from "../components/PostcardPreview.astro";
 import CardPacks from "../components/CardPacks.astro";
 const faqs = [
-  ["Est-ce vraiment son doudou ou sa tétine sur les cartes ?", "Oui ! Sa photo sert de référence pour les illustrations. Chaque carte raconte une aventure de son compagnon, avec un petit mot adressé à votre enfant. Les visuels présentés ici sont des exemples."],
-  ["Comment fonctionnent les envois ?", "Vous choisissez de 1 à 5 cartes et une aventure pour chacune. Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à la même adresse. Vous pouvez aussi choisir un seul envoi pour toutes vos cartes et bénéficier d’une remise. Les délais postaux peuvent faire varier les dates de réception."],
-  ["Combien coûtent les cartes ?", "1 carte : 7 € ; 2 cartes : 12 € ; 3 cartes : 16,50 € ; 4 cartes : 21 € ; 5 cartes : 25 €. Les frais de port en France métropolitaine, Belgique, Luxembourg et Suisse sont inclus. Un seul paiement, sans abonnement ni renouvellement automatique."],
-  ["Faut-il nous envoyer son doudou ou sa tétine ?", "Une photo suffit ! Son compagnon reste chez vous. Doudou peut voyager dans les images sans quitter les bras de votre enfant. Pour Tétine, vous choisissez en famille comment raconter ses vacances."],
-  ["La photo de mon enfant est-elle obligatoire ?", "Non, seule la photo de son compagnon est nécessaire. Son prénom personnalise les petits mots. Aucune photo de votre enfant n’est demandée."],
-  ["Est-ce une méthode pour arrêter la tétine ?", "Ces cartes proposent une histoire à partager, à son rythme. Elles ne garantissent pas un arrêt facile ou immédiat. Votre enfant a le droit d’être triste, de poser des questions et de prendre son temps."],
-  ["Peut-on déjà commander ?", "Le site est en démonstration : vous pouvez préparer vos cartes, sans paiement ni envoi de photos. Les commandes et les envois réels ouvriront après la finalisation de la fabrication et des informations commerciales."],
-  ["Que deviennent nos photos ?", "En démonstration, elles restent dans votre navigateur. Pour les futures commandes, elles seront stockées en privé pour personnaliser vos cartes, puis supprimées au plus tard après 90 jours. Consultez les informations de confidentialité pour les détails."],
+  [t("Est-ce vraiment son doudou ou sa tétine sur les cartes ?"), t("Oui ! Sa photo sert de référence pour les illustrations. Chaque carte raconte une aventure de son compagnon, avec un petit mot adressé à votre enfant. Les visuels présentés ici sont des exemples.")],
+  [t("Comment fonctionnent les envois ?"), t("Vous choisissez de 1 à 5 cartes et une aventure pour chacune. Par défaut, les cartes sont expédiées à 7 jours d’intervalle, à la même adresse. Vous pouvez aussi choisir un seul envoi pour toutes vos cartes et bénéficier d’une remise. Les délais postaux peuvent faire varier les dates de réception.")],
+  [t("Combien coûtent les cartes ?"), t("1 carte : 7 € ; 2 cartes : 12 € ; 3 cartes : 16,50 € ; 4 cartes : 21 € ; 5 cartes : 25 €. Les frais de port en France métropolitaine, Belgique, Luxembourg et Suisse sont inclus. Un seul paiement, sans abonnement ni renouvellement automatique.")],
+  [t("Faut-il nous envoyer son doudou ou sa tétine ?"), t("Une photo suffit ! Son compagnon reste chez vous. Doudou peut voyager dans les images sans quitter les bras de votre enfant. Pour Tétine, vous choisissez en famille comment raconter ses vacances.")],
+  [t("La photo de mon enfant est-elle obligatoire ?"), t("Non, seule la photo de son compagnon est nécessaire. Son prénom personnalise les petits mots. Aucune photo de votre enfant n’est demandée.")],
+  [t("Est-ce une méthode pour arrêter la tétine ?"), t("Ces cartes proposent une histoire à partager, à son rythme. Elles ne garantissent pas un arrêt facile ou immédiat. Votre enfant a le droit d’être triste, de poser des questions et de prendre son temps.")],
+  [t("Peut-on déjà commander ?"), t("Le site est en démonstration : vous pouvez préparer vos cartes, sans paiement ni envoi de photos. Les commandes et les envois réels ouvriront après la finalisation de la fabrication et des informations commerciales.")],
+  [t("Que deviennent nos photos ?"), t("En démonstration, elles restent dans votre navigateur. Pour les futures commandes, elles seront stockées en privé pour personnaliser vos cartes, puis supprimées au plus tard après 90 jours. Consultez les informations de confidentialité pour les détails.")],
 ];
 ---
 
@@ -20,35 +22,20 @@ const faqs = [
   <section class="hero wrap">
     <div class="hero-copy">
       <span class="eyebrow">
-        <span class="little-star">✳</span> LES PETITS HÉROS DE SON ENFANCE
-      </span>
-      <h1>
-        Ses petits
-        <br />
-        compagnons.
-        <br />
-        <em>
-          De très grandes
-          <br />
-          aventures.
-        </em>
+        <span class="little-star">✳</span>{t(" LES PETITS HÉROS DE SON ENFANCE ")}</span>
+      <h1>{t(" Ses petits ")}<br />{t(" compagnons. ")}<br />
+        <em>{t(" De très grandes ")}<br />{t(" aventures. ")}</em>
       </h1>
-      <p>
-        Et si son doudou ou sa tétine avait mille choses à lui raconter&nbsp;?
-        De vraies cartes postales où{" "}
-        <strong>son compagnon lui écrit, chaque semaine.</strong>
+      <p>{t(" Et si son doudou ou sa tétine avait mille choses à lui raconter ? De vraies cartes postales où")}{" "}
+        <strong>{t("son compagnon lui écrit, chaque semaine.")}</strong>
       </p>
       <div class="hero-actions">
-        <a class="button" href="/personnaliser">
-          Créer ses cartes <Icon name="arrow" size={18} />
+        <a class="button" href={localPath("/personnaliser")}>{t(" Créer ses cartes ")}<Icon name="arrow" size={18} />
         </a>
-        <a class="text-link" href="#comment-ca-marche">
-          Comment ça marche ?
-        </a>
+        <a class="text-link" href="#comment-ca-marche">{t(" Comment ça marche ? ")}</a>
       </div>
       <div class="hero-caption">
-        <Icon name="heart" size={17} /> 1 à 5 cartes · Dès 5 € la carte par 5 · Port inclus
-      </div>
+        <Icon name="heart" size={17} />{t(" 1 à 5 cartes · Dès 5 € la carte par 5 · Port inclus ")}</div>
     </div>
     <div class="hero-art">
       <div class="hero-frame">
@@ -56,102 +43,69 @@ const faqs = [
           src="/images/compagnons-voyage.webp"
           width="1536"
           height="1024"
-          alt="Un doudou lapin et une petite tétine préparent leur aventure sur un ponton au bord d’un lagon"
+          alt={t("Un doudou lapin et une petite tétine préparent leur aventure sur un ponton au bord d’un lagon")}
           fetchpriority="high"
         />
         <div class="hero-art-caption">
-          <span>Un petit bout de lui, au bout du monde.</span>
+          <span>{t("Un petit bout de lui, au bout du monde.")}</span>
           <Icon name="sun" size={21} />
         </div>
       </div>
       <div class="travel-stamp">
-        <span>UNE HISTOIRE</span>
+        <span>{t("UNE HISTOIRE")}</span>
         <Icon name="heart" size={26} />
-        <span>RIEN QU’À LUI</span>
+        <span>{t("RIEN QU’À LUI")}</span>
       </div>
       <span class="art-star" aria-hidden="true">
         ✧
       </span>
-      <span class="hero-scribble">Le début d’un joli voyage…</span>
+      <span class="hero-scribble">{t("Le début d’un joli voyage…")}</span>
     </div>
   </section>
   <div class="trust-band">
     <div class="wrap">
       <span>
-        <Icon name="camera" />
-        Son vrai compagnon en héros
-      </span>
+        <Icon name="camera" />{t(" Son vrai compagnon en héros ")}</span>
       <span>
-        <Icon name="book" />
-        Une carte chaque semaine
-      </span>
+        <Icon name="book" />{t(" Une carte chaque semaine ")}</span>
       <span>
-        <Icon name="heart" />
-        Pensé pour les 2–5 ans
-      </span>
+        <Icon name="heart" />{t(" Pensé pour les 2–5 ans ")}</span>
       <span>
-        <Icon name="lock" />
-        Ses photos restent privées
-      </span>
+        <Icon name="lock" />{t(" Ses photos restent privées ")}</span>
     </div>
   </div>
   <section class="section wrap companions-section">
     <div class="center-heading">
-      <span class="eyebrow">DEUX PETITS COMPAGNONS, UNE MÊME TENDRESSE</span>
-      <h2>
-        Il y a des liens
-        <br />
-        qui font de <em>belles histoires.</em>
+      <span class="eyebrow">{t("DEUX PETITS COMPAGNONS, UNE MÊME TENDRESSE")}</span>
+      <h2>{t(" Il y a des liens ")}<br />{t(" qui font de ")}<em>{t("belles histoires.")}</em>
       </h2>
-      <p>
-        La petite tétine des siestes. Le doudou qu’on emmène partout.
-        <br />
-        Ils connaissent déjà son monde. À leur tour de lui faire découvrir le
-        leur.
-      </p>
+      <p>{t(" La petite tétine des siestes. Le doudou qu’on emmène partout. ")}<br />{t(" Ils connaissent déjà son monde. À leur tour de lui faire découvrir le leur. ")}</p>
     </div>
     <div class="companion-grid">
       <a
         class="companion-card doudou-card"
-        href="/personnaliser?compagnon=doudou"
+        href={localPath("/personnaliser?compagnon=doudou")}
       >
         <span class="companion-symbol" aria-hidden="true">
           ✳
         </span>
-        <span class="eyebrow">SON COPAIN DE TOUJOURS</span>
-        <h3>
-          Mon doudou
-          <br />
-          part à l’aventure.
-        </h3>
-        <p>
-          Ses oreilles un peu froissées, sa couleur préférée… c’est bien lui !
-          Un voyage imaginaire pour retrouver son fidèle ami au fil des pages.
-        </p>
-        <span class="text-link">
-          Raconter son aventure <Icon name="arrow" size={18} />
+        <span class="eyebrow">{t("SON COPAIN DE TOUJOURS")}</span>
+        <h3>{t(" Mon doudou ")}<br />{t(" part à l’aventure. ")}</h3>
+        <p>{t(" Ses oreilles un peu froissées, sa couleur préférée… c’est bien lui ! Un voyage imaginaire pour retrouver son fidèle ami au fil des pages. ")}</p>
+        <span class="text-link">{t(" Raconter son aventure ")}<Icon name="arrow" size={18} />
         </span>
       </a>
       <a
         class="companion-card tetine-card"
-        href="/personnaliser?compagnon=tetine"
+        href={localPath("/personnaliser?compagnon=tetine")}
       >
         <span class="companion-symbol" aria-hidden="true">
           ♡
         </span>
-        <span class="eyebrow">UN PETIT AU REVOIR, À SON RYTHME</span>
-        <h3>
-          Ma tétine
-          <br />
-          prend des vacances.
-        </h3>
-        <p>
-          Elle a partagé tant de câlins. Maintenant, elle découvre le monde et
-          pense à votre enfant avec tendresse. Une histoire pour en parler
-          ensemble.
-        </p>
-        <span class="text-link">
-          Imaginer ses vacances <Icon name="arrow" size={18} />
+        <span class="eyebrow">{t("UN PETIT AU REVOIR, À SON RYTHME")}</span>
+        <h3>{t(" Ma tétine ")}<br />{t(" prend des vacances. ")}</h3>
+        <p>{t(" Elle a partagé tant de câlins. Maintenant, elle découvre le monde et pense à votre enfant avec tendresse. Une histoire pour en parler ensemble. ")}</p>
+        <span class="text-link">{t(" Imaginer ses vacances ")}<Icon name="arrow" size={18} />
         </span>
       </a>
     </div>
@@ -159,69 +113,52 @@ const faqs = [
   <section id="aventures" class="section wrap adventures">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">LE MONDE EST GRAND. L’IMAGINATION AUSSI.</span>
-        <h2>
-          On part <em>où ?</em>
+        <span class="eyebrow">{t("LE MONDE EST GRAND. L’IMAGINATION AUSSI.")}</span>
+        <h2>{t(" On part ")}<em>{t("où ?")}</em>
         </h2>
       </div>
-      <a class="text-link" href="/aventures">
-        Explorer les aventures <Icon name="arrow" size={18} />
+      <a class="text-link" href={localPath("/aventures")}>{t(" Explorer les aventures ")}<Icon name="arrow" size={18} />
       </a>
     </div>
     <AdventureCards />
   </section>
   <section id="tarifs" class="section wrap pricing-section">
-    <div class="center-heading"><span class="eyebrow">LES PETITS RENDEZ-VOUS FONT LES GRANDS SOUVENIRS</span><h2>Un coucou, ou <em>tout un voyage.</em></h2><p>De 1 à 5 cartes personnalisées. Un paiement unique, aucun abonnement.<br />Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.</p></div>
+    <div class="center-heading"><span class="eyebrow">{t("LES PETITS RENDEZ-VOUS FONT LES GRANDS SOUVENIRS")}</span><h2>{t("Un coucou, ou ")}<em>{t("tout un voyage.")}</em></h2><p>{t("De 1 à 5 cartes personnalisées. Un paiement unique, aucun abonnement.")}<br />{t("Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.")}</p></div>
     <CardPacks />
-    <p class="quiet-note">Par défaut, une carte est expédiée tous les 7 jours. Vous pouvez aussi recevoir toutes vos cartes en un seul envoi, avec une remise. Les dates de réception dépendent de l’acheminement postal.</p>
+    <p class="quiet-note">{t("Par défaut, une carte est expédiée tous les 7 jours. Vous pouvez aussi recevoir toutes vos cartes en un seul envoi, avec une remise. Les dates de réception dépendent de l’acheminement postal.")}</p>
   </section>
   <section id="comment-ca-marche" class="how-section">
     <div class="wrap section">
       <div class="center-heading">
-        <span class="eyebrow">VOUS AVEZ DÉJÀ LE PERSONNAGE PRINCIPAL</span>
-        <h2>
-          Une photo, et l’histoire
-          <br />
-          <em>prend vie.</em>
+        <span class="eyebrow">{t("VOUS AVEZ DÉJÀ LE PERSONNAGE PRINCIPAL")}</span>
+        <h2>{t(" Une photo, et l’histoire ")}<br />
+          <em>{t("prend vie.")}</em>
         </h2>
       </div>
       <div class="steps">
         <article>
           <span class="step-number">01</span>
           <Icon name="plane" size={32} />
-          <h3>Composez son voyage</h3>
-          <p>
-            De 1 à 5 cartes. Safari, plongée, avion… choisissez une aventure pour
-            chaque envoi.
-          </p>
+          <h3>{t("Composez son voyage")}</h3>
+          <p>{t(" De 1 à 5 cartes. Safari, plongée, avion… choisissez une aventure pour chaque envoi. ")}</p>
         </article>
         <article>
           <span class="step-number">02</span>
           <Icon name="camera" size={32} />
-          <h3>Présentez-nous son héros</h3>
-          <p>
-            Son prénom, la photo de son doudou ou de sa tétine, et les petits
-            détails qui le rendent unique.
-          </p>
+          <h3>{t("Présentez-nous son héros")}</h3>
+          <p>{t(" Son prénom, la photo de son doudou ou de sa tétine, et les petits détails qui le rendent unique. ")}</p>
         </article>
         <article>
           <span class="step-number">03</span>
           <Icon name="book" size={32} />
-          <h3>Guettez le facteur ensemble</h3>
-          <p>
-            Une carte expédiée tous les 7 jours. Un petit mot à lire ensemble,
-            un rendez-vous à attendre avec impatience.
-          </p>
+          <h3>{t("Guettez le facteur ensemble")}</h3>
+          <p>{t(" Une carte expédiée tous les 7 jours. Un petit mot à lire ensemble, un rendez-vous à attendre avec impatience. ")}</p>
         </article>
       </div>
       <div class="center-action">
-        <a class="button" href="/personnaliser">
-          À nous d’imaginer la suite <Icon name="arrow" size={18} />
+        <a class="button" href={localPath("/personnaliser")}>{t(" À nous d’imaginer la suite ")}<Icon name="arrow" size={18} />
         </a>
-        <p class="quiet-note">
-          Découvrez le parcours de démonstration. Les commandes ouvriront
-          prochainement.
-        </p>
+        <p class="quiet-note">{t(" Découvrez le parcours de démonstration. Les commandes ouvriront prochainement. ")}</p>
       </div>
     </div>
   </section>
@@ -232,34 +169,22 @@ const faqs = [
         width="1200"
         height="800"
         loading="lazy"
-        alt="Tétine se repose dans un hamac à l’ombre des palmiers"
+        alt={t("Tétine se repose dans un hamac à l’ombre des palmiers")}
       />
       <span class="story-label">
-        <Icon name="heart" size={17} /> Toujours une pensée pour toi.
-      </span>
+        <Icon name="heart" size={17} />{t(" Toujours une pensée pour toi. ")}</span>
     </div>
     <div class="story-copy">
-      <span class="eyebrow">UN PEU D’AVENTURE. BEAUCOUP D’AMOUR.</span>
-      <h2>
-        Les aventures passent.
-        <br />
-        <em>Le lien reste.</em>
+      <span class="eyebrow">{t("UN PEU D’AVENTURE. BEAUCOUP D’AMOUR.")}</span>
+      <h2>{t(" Les aventures passent. ")}<br />
+        <em>{t("Le lien reste.")}</em>
       </h2>
-      <p>
-        Ce qui rend son doudou irremplaçable, ce n’est pas seulement sa couleur
-        ou ses petites pattes. Ce sont toutes les histoires qu’ils ont déjà
-        vécues ensemble.
+      <p>{t(" Ce qui rend son doudou irremplaçable, ce n’est pas seulement sa couleur ou ses petites pattes. Ce sont toutes les histoires qu’ils ont déjà vécues ensemble. ")}</p>
+      <p>{t(" Nous imaginons la suite : des découvertes, des copains, des petites maladresses… et toujours cette pensée tendre pour votre enfant. ")}</p>
+      <p>{t(" Pour rêver avec Doudou. Pour accompagner les vacances de Tétine.")}{" "}
+        <strong>{t("Et laisser à chaque émotion sa place.")}</strong>
       </p>
-      <p>
-        Nous imaginons la suite : des découvertes, des copains, des petites
-        maladresses… et toujours cette pensée tendre pour votre enfant.
-      </p>
-      <p>
-        Pour rêver avec Doudou. Pour accompagner les vacances de Tétine.{" "}
-        <strong>Et laisser à chaque émotion sa place.</strong>
-      </p>
-      <a class="text-link" href="/notre-histoire">
-        L’histoire derrière nos histoires <Icon name="arrow" size={18} />
+      <a class="text-link" href={localPath("/notre-histoire")}>{t(" L’histoire derrière nos histoires ")}<Icon name="arrow" size={18} />
       </a>
     </div>
   </section>
@@ -267,17 +192,12 @@ const faqs = [
     <div class="wrap section">
       <div class="section-heading">
         <div>
-          <span class="eyebrow">DES NOUVELLES DU BOUT DU MONDE</span>
-          <h2>
-            Dans leurs valises,
-            <br />
-            <em>de jolis souvenirs.</em>
+          <span class="eyebrow">{t("DES NOUVELLES DU BOUT DU MONDE")}</span>
+          <h2>{t(" Dans leurs valises, ")}<br />
+            <em>{t("de jolis souvenirs.")}</em>
           </h2>
         </div>
-        <p>
-          Un aperçu de l’univers que nous imaginons :<br />
-          une illustration, un petit mot et beaucoup de tendresse.
-        </p>
+        <p>{t(" Un aperçu de l’univers que nous imaginons :")}<br />{t(" une illustration, un petit mot et beaucoup de tendresse. ")}</p>
       </div>
       <div class="gallery-grid">
         <figure>
@@ -286,10 +206,9 @@ const faqs = [
             width="600"
             height="400"
             loading="lazy"
-            alt="Des tétines amies sont prêtes à décoller dans l’avion"
+            alt={t("Des tétines amies sont prêtes à décoller dans l’avion")}
           />
-          <figcaption>
-            Le grand départ <span>01</span>
+          <figcaption>{t(" Le grand départ ")}<span>01</span>
           </figcaption>
         </figure>
         <figure>
@@ -298,10 +217,9 @@ const faqs = [
             width="600"
             height="400"
             loading="lazy"
-            alt="Tétine explore le lagon en paddle"
+            alt={t("Tétine explore le lagon en paddle")}
           />
-          <figcaption>
-            Les petites découvertes <span>02</span>
+          <figcaption>{t(" Les petites découvertes ")}<span>02</span>
           </figcaption>
         </figure>
         <figure>
@@ -310,31 +228,22 @@ const faqs = [
             width="600"
             height="400"
             loading="lazy"
-            alt="Tétine construit un château sur une plage de sable doré"
+            alt={t("Tétine construit un château sur une plage de sable doré")}
           />
-          <figcaption>
-            Les souvenirs à garder <span>03</span>
+          <figcaption>{t(" Les souvenirs à garder ")}<span>03</span>
           </figcaption>
         </figure>
       </div>
-      <p class="quiet-note">
-        Des cartes à recevoir, à relire et à garder. Une aventure différente à chaque envoi, si vous le souhaitez.
-      </p>
+      <p class="quiet-note">{t(" Des cartes à recevoir, à relire et à garder. Une aventure différente à chaque envoi, si vous le souhaitez. ")}</p>
     </div>
   </section>
   <section id="questions" class="faq-section wrap section">
     <div>
-      <span class="eyebrow">AVANT DE FAIRE LES VALISES</span>
-      <h2>
-        Vos petites
-        <br />
-        <em>questions.</em>
+      <span class="eyebrow">{t("AVANT DE FAIRE LES VALISES")}</span>
+      <h2>{t(" Vos petites ")}<br />
+        <em>{t("questions.")}</em>
       </h2>
-      <p>
-        On vous raconte tout,
-        <br />
-        en toute simplicité.
-      </p>
+      <p>{t(" On vous raconte tout, ")}<br />{t(" en toute simplicité. ")}</p>
       <Icon name="sparkles" size={45} />
     </div>
     <div class="faq-list">
@@ -350,16 +259,13 @@ const faqs = [
     </div>
   </section>
   <section class="last-call wrap">
-    <span class="eyebrow">IL CONNAÎT DÉJÀ SON HÉROS PRÉFÉRÉ</span>
-    <h2>
-      Et si on lui écrivait
-      <br />
-      <em>une grande aventure ?</em>
+    <span class="eyebrow">{t("IL CONNAÎT DÉJÀ SON HÉROS PRÉFÉRÉ")}</span>
+    <h2>{t(" Et si on lui écrivait ")}<br />
+      <em>{t("une grande aventure ?")}</em>
     </h2>
-    <a class="button" href="/personnaliser">
-      Créer ses cartes <Icon name="arrow" size={18} />
+    <a class="button" href={localPath("/personnaliser")}>{t(" Créer ses cartes ")}<Icon name="arrow" size={18} />
     </a>
-    <p>Une petite histoire. Une grande place dans son cœur.</p>
+    <p>{t("Une petite histoire. Une grande place dans son cœur.")}</p>
     <Icon name="plane" size={65} />
   </section>
   <PostcardPreview />

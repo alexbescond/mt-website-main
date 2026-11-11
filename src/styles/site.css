@@ -1659,3 +1659,12 @@ dialog > .button {
     animation: none !important;
   }
 }
+/* A language is a preference, not a flag or a shipping destination. */
+.language-switch { position: relative; flex-shrink: 0; font-size: .82rem; }
+.language-switch summary { cursor: pointer; padding: .6rem .7rem; border: 1px solid #dedfd2; border-radius: 1.5rem; list-style: none; }
+.language-switch summary::-webkit-details-marker { display: none; }
+.language-switch nav { position: absolute; top: calc(100% + .4rem); right: 0; z-index: 50; min-width: 9rem; padding: .4rem; border: 1px solid #dedfd2; border-radius: .8rem; background: #fffdf8; box-shadow: 0 8px 24px #354d4218; }
+.language-switch a { display: block; padding: .65rem .8rem; border-radius: .4rem; white-space: nowrap; }
+.language-switch a:hover, .language-switch a[aria-current] { background: #edf0e4; }
+@media (max-width: 1100px) { html:not([lang="fr"]) .desktop-nav { gap: .8rem; font-size: .8rem; } }
+@media (max-width: 700px) { .site-header { flex-wrap: wrap; } .language-switch { margin-left: auto; } .site-header .header-cta { order: 4; flex-basis: 100%; text-align: center; justify-content: center; } }

@@ -1,5 +1,8 @@
 ---
-import { adventures } from "../lib/catalog";
+import { getI18n } from "../lib/i18n";
+const { t, localPath, catalog } = getI18n(Astro.url);
+const { adventures } = catalog;
+
 import Icon from "./Icon.astro";
 import Postcard from "./Postcard.astro";
 const featured = ["tropiques", "ski"] as const;
@@ -9,16 +12,16 @@ const featured = ["tropiques", "ski"] as const;
     <article class="book-card postcard-product">
       <Postcard adventure={id} />
       <div class="book-info">
-        <div class="book-number">CARTE POSTALE 0{i + 1}<span>DOUDOU OU TÉTINE</span></div>
+        <div class="book-number">{t("CARTE POSTALE 0")}{i + 1}<span>{t("DOUDOU OU TÉTINE")}</span></div>
         <h3>{adventures[id].title}</h3>
-        <p>{id === "ski" ? "Une escapade dans la neige, un petit mot de son compagnon et une surprise à découvrir dans la boîte aux lettres." : "Du soleil, du sable et un message rien que pour lui. Son compagnon lui raconte son escapade, sur une vraie carte à garder."}</p>
-        <button type="button" class="postcard-preview-link text-link" data-preview={id} aria-label={`Voir la carte ${adventures[id].title}`}>Voir le recto et le verso <Icon name="arrow" size={16} /></button>
+        <p>{id === "ski" ? t("Une escapade dans la neige, un petit mot de son compagnon et une surprise à découvrir dans la boîte aux lettres.") : t("Du soleil, du sable et un message rien que pour lui. Son compagnon lui raconte son escapade, sur une vraie carte à garder.")}</p>
+        <button type="button" class="postcard-preview-link text-link" data-preview={id} aria-label={t("Voir la carte {0}", adventures[id].title)}>{t("Voir le recto et le verso ")}<Icon name="arrow" size={16} /></button>
         <div class="book-purchase">
-          <div class="price">Dès 5 € <span>la carte dans le lot de 5 · 7 € à l’unité</span></div>
-          <a href={`/personnaliser?aventure=${id}`} class="round-link" aria-label={`Personnaliser ${adventures[id].title}`}><Icon name="arrow" size={23} /></a>
+          <div class="price">{t("Dès 5 € ")}<span>{t("la carte dans le lot de 5 · 7 € à l’unité")}</span></div>
+          <a href={localPath(`/personnaliser?aventure=${id}`)} class="round-link" aria-label={t("Personnaliser {0}", adventures[id].title)}><Icon name="arrow" size={23} /></a>
         </div>
       </div>
     </article>
   ))}
 </div>
-<p class="quiet-note">À chaque aventure, son timbre vintage et le tampon de sa poste imaginaire, imprimés au verso. Exemples avec Tétine, personnalisés avec votre compagnon. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.</p>
+<p class="quiet-note">{t("À chaque aventure, son timbre vintage et le tampon de sa poste imaginaire, imprimés au verso. Exemples avec Tétine, personnalisés avec votre compagnon. Frais de port inclus en France métropolitaine, Belgique, Luxembourg et Suisse.")}</p>

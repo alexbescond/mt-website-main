@@ -1,5 +1,6 @@
 import { addDays, parisDate, type TrackingOrder } from "../lib/tracking-model";
 import type { AdminOrder } from "../lib/tracking";
+import { t, locale } from "./i18n";
 export function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = "") {
   const node = document.createElement(tag);
   node.className = className;
@@ -7,19 +8,19 @@ export function element<K extends keyof HTMLElementTagNameMap>(tag: K, className
   return node;
 }
 export async function apiRequest<T>(url: string, data?: unknown): Promise<T> {
-  const response = await fetch(url, data === undefined ? { cache: "no-store" } : {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+  const response = await fetch(url, data === undefined ? { cache: "no-store", headers: { "Accept-Language": locale } } : {
+    method: "POST", headers: { "Content-Type": "application/json", "Accept-Language": locale }, body: JSON.stringify(data),
   });
   const body = await response.json() as { error?: string };
   if (!response.ok) {
-    const error = new Error(body.error || "Une erreur temporaire est survenue. Réessayez.");
+    const error = new Error(body.error || t("Une erreur temporaire est survenue. Réessayez."));
     Object.assign(error, { status: response.status });
     throw error;
   }
   return body as T;
 }
 export function errorText(error: unknown) {
-  return error instanceof Error ? error.message : "Une erreur temporaire est survenue. Réessayez.";
+  return error instanceof Error ? error.message : t("Une erreur temporaire est survenue. Réessayez.");
 }
 const DEMO_KEY = "mt-tracking-demo-v1";
 export function demoOrder(reset = false): AdminOrder {
@@ -34,7 +35,7 @@ export function demoOrder(reset = false): AdminOrder {
   }
   const today = parisDate();
   return {
-    id: "demo", reference: "DEMO2026", companion: "doudou", companionName: "Lapinou", quantity: 3, deliveryMode: "weekly",
+    id: "demo", reference: "DEMO2026", companion: "doudou", companionName: "Lapinou", quantity: 3, deliveryMode: "weekly", locale, cardLocale: locale,
     paidAt: Date.now() - 10 * 86400000, parent: "Alex Martin", child: "Camille", email: "parent@example.com",
     address: "Alex Martin\n12 rue des Nuages\n75001 Paris\nFrance", notes: "Un petit coucou pour Camille.", hasPhoto: false, notifications: [],
     cards: [
@@ -49,7 +50,7 @@ export function saveDemo(order: AdminOrder) {
 }
 export function progressCopy(order: TrackingOrder) {
   const count = order.cards.filter(card => card.state === "sent").length;
-  return { count, text: count + " carte" + (count > 1 ? "s" : "") + " sur " + order.quantity + " expédiée" + (count > 1 ? "s" : "") };
+  return { count, text: t(count > 1 ? "{0} cartes sur {1} expédiées" : "{0} carte sur {1} expédiée", count, order.quantity) };
 }
 
 export function appendChildren(parent: Node, ...children: Node[]) {

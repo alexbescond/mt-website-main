@@ -1,4 +1,6 @@
-import { adventures, isAdventureId } from "../lib/catalog";
+import { t, localPath, catalog } from "./i18n";
+const { adventures } = catalog;
+import { isAdventureId } from "../lib/catalog";
 const dialog = document.querySelector<HTMLDialogElement>("#postcard-preview")!;
 const front = document.querySelector<HTMLElement>("#preview-front")!;
 const back = document.querySelector<HTMLElement>("#preview-back")!;
@@ -6,8 +8,8 @@ const flip = document.querySelector<HTMLButtonElement>("#preview-flip")!;
 function showBack(visible: boolean) {
   front.hidden = visible;
   back.hidden = !visible;
-  flip.textContent = visible ? "Voir le recto" : "Voir le verso";
-  document.querySelector("#preview-counter")!.textContent = visible ? "Verso · 2 / 2" : "Recto · 1 / 2";
+  flip.textContent = visible ? t("Voir le recto") : t("Voir le verso");
+  document.querySelector("#preview-counter")!.textContent = visible ? t("Verso · 2 / 2") : t("Recto · 1 / 2");
 }
 document.querySelectorAll<HTMLButtonElement>("[data-preview]").forEach((button) => button.addEventListener("click", () => {
   const id = button.dataset.preview;
@@ -20,9 +22,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-preview]").forEach((button) 
     stamp.hidden = stamp.dataset.postage !== id;
   });
   document.querySelector("#preview-text")!.textContent = id === "ski"
-    ? "Aujourd’hui, j’ai fait mes premières traces dans la neige. Mes amis m’ont aidée à me relever, puis nous avons partagé un chocolat chaud. Je t’envoie un flocon de tendresse et je pense très fort à toi !"
-    : "Le soleil me chatouille les pieds et la mer est toute bleue. J’ai trouvé un joli coquillage sur la plage. Je l’ai approché de mon oreille : on aurait dit qu’il me racontait une histoire ! Je pense très fort à toi.";
-  document.querySelector<HTMLAnchorElement>("#preview-create")!.href = `/personnaliser?aventure=${id}`;
+    ? t("Aujourd’hui, j’ai fait mes premières traces dans la neige. Mes amis m’ont aidée à me relever, puis nous avons partagé un chocolat chaud. Je t’envoie un flocon de tendresse et je pense très fort à toi !")
+    : t("Le soleil me chatouille les pieds et la mer est toute bleue. J’ai trouvé un joli coquillage sur la plage. Je l’ai approché de mon oreille : on aurait dit qu’il me racontait une histoire ! Je pense très fort à toi.");
+  document.querySelector<HTMLAnchorElement>("#preview-create")!.href = localPath(`/personnaliser?aventure=${id}`);
   showBack(false);
   dialog.showModal();
 }));
