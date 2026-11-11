@@ -1,6 +1,6 @@
 import { translator, localizedPath, type Locale } from "./i18n";
 import { SEND_INTERVAL_DAYS, SITE_NAME, type DeliveryMode } from "./catalog";
-import { displayDate } from "./tracking-model";
+import { displayDate, TRACKING_LINK_DAYS } from "./tracking-model";
 
 function escapeHtml(text: string) {
   return text.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -55,7 +55,7 @@ function notificationCopy(kind: string, reference: string, position?: number, da
   if (kind === "access") {
     return {
       subject: t("Votre lien de suivi — commande {0}", reference),
-      preview: t("Voici le lien demandé pour suivre votre commande. Il est valable 30 jours."),
+      preview: t("Voici le lien demandé pour suivre votre commande. Il est valable {0} jours.", TRACKING_LINK_DAYS),
       eyebrow: t("ACCÈS AU SUIVI"),
       title: t("Votre lien de suivi"),
       accent: t("est prêt."),
@@ -94,7 +94,7 @@ export function notificationMessage(kind: string, reference: string, link: strin
   const origin = new URL(link).origin;
   const renewalLink = origin + localizedPath("/suivi", locale);
   const questionsLink = origin + localizedPath("/#questions", locale);
-  const privacy = t("Ce lien est personnel et valable 30 jours. Gardez-le pour vous : il donne accès au suivi de votre commande.");
+  const privacy = t("Ce lien est personnel et valable {0} jours. Gardez-le pour vous : il donne accès au suivi de votre commande.", TRACKING_LINK_DAYS);
   const renewal = t("Votre lien a expiré ? Demandez-en un nouveau depuis la page de suivi, avec votre adresse e-mail et votre référence de commande.");
   const signoff = t("À bientôt,");
   const tagline = t("Des cartes à recevoir, à relire et à garder.");

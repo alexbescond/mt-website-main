@@ -541,7 +541,6 @@
   "Où en est votre commande ?": "¿Cómo va tu pedido?",
   "Votre page de suivi récapitule les cartes déjà expédiées et, s’il en reste à envoyer, la date prévue du prochain envoi.": "La página de seguimiento muestra las postales enviadas y, si quedan pendientes, la fecha prevista del próximo envío.",
   "Nous espérons qu’elle fera plaisir à votre enfant.": "Esperamos que le haga mucha ilusión a tu peque.",
-  "Voici le lien demandé pour suivre votre commande. Il est valable 30 jours.": "Aquí tienes el enlace de seguimiento solicitado. Es válido durante 30 días.",
   "ACCÈS AU SUIVI": "ACCESO AL SEGUIMIENTO",
   "est prêt.": "está listo.",
   "Vous avez demandé à accéder au suivi de votre commande. Utilisez le lien ci-dessous : aucun compte n’est nécessaire.": "Has solicitado acceder al seguimiento de tu pedido. Usa el enlace siguiente: no necesitas una cuenta.",
@@ -560,7 +559,6 @@
   "Nous préparons toutes vos cartes pour les expédier ensemble, dans un seul envoi. Vous recevrez un e-mail au moment de l’expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "Preparamos todas tus postales para enviarlas juntas. Recibirás un correo cuando se envíen; la recepción depende después del servicio postal.",
   "Nous commençons par préparer la première carte. Si vous en avez commandé plusieurs, les suivantes seront expédiées à {0} jours d’intervalle. Vous recevrez un e-mail à chaque expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "Empezamos preparando la primera postal. Si has pedido varias, las siguientes se enviarán cada {0} días. Recibirás un correo en cada envío; la recepción depende después del servicio postal.",
   "Nous espérons que ces cartes deviendront de beaux souvenirs de famille.": "Esperamos que estas postales se conviertan en bonitos recuerdos familiares.",
-  "Ce lien est personnel et valable 30 jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "Este enlace personal es válido durante 30 días. No lo compartas: da acceso al seguimiento de tu pedido.",
   "Votre lien a expiré ? Demandez-en un nouveau depuis la page de suivi, avec votre adresse e-mail et votre référence de commande.": "¿Ha caducado tu enlace? Solicita uno nuevo en la página de seguimiento con tu correo y la referencia del pedido.",
   "À bientôt,": "Hasta pronto,",
   "Des cartes à recevoir, à relire et à garder.": "Postales para recibir, releer y guardar.",
@@ -648,5 +646,7 @@
   "Et si son doudou ou sa tétine avait mille choses à lui raconter ? De vraies cartes postales où": "¿Y si su peluche o su chupete tuviera mil cosas que contarle? Postales de verdad en las que",
   "{0} cartes sur {1} expédiées": "{0} de {1} postales enviadas",
   "{0} carte sur {1} expédiée": "{0} de {1} postales enviadas",
-  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Tu elección de idioma se guarda durante un año en una cookie de preferencias. No se utiliza para seguimiento publicitario."
+  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Tu elección de idioma se guarda durante un año en una cookie de preferencias. No se utiliza para seguimiento publicitario.",
+  "Voici le lien demandé pour suivre votre commande. Il est valable {0} jours.": "Aquí tienes el enlace de seguimiento solicitado. Es válido durante {0} días.",
+  "Ce lien est personnel et valable {0} jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "Este enlace personal es válido durante {0} días. No lo compartas: da acceso al seguimiento de tu pedido."
 }

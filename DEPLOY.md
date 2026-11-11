@@ -1,5 +1,9 @@
 # Déploiement Cloudflare
 
+## Mise à jour notifications — 4 novembre 2026
+
+La lecture des versions Cloudflare confirme que la production est déjà en `CHECKOUT_MODE=live` avec `EMAIL_ENABLED=true` ; les mentions de production démo ci-dessous décrivent la préparation historique du 3 novembre. Le staging est en `CHECKOUT_MODE=test`. La configuration et le code autorisent maintenant les e-mails sur les deux environnements, avec `RESEND_API_KEY` et `TRACKING_LINK_SECRET` installés séparément, et un cron partagé toutes les cinq minutes (nettoyage quotidien à 03:15 UTC). Ce regroupement évite de dépasser le quota de déclencheurs du compte. Déploiements effectués : staging `ba735dc4-5035-4773-8370-4883f1a4c750`, production `4e7cf22c-fe53-4973-872b-1384d4ddda60`, avec le cron accepté sur chaque Worker. Les e-mails de staging sont préfixés « [TEST] » et contiennent un lien vers le suivi du staging. Le mode démo et les tests automatisés restent sans envoi réel.
+
 Les conventions suivent [ka-website-mediation](https://github.com/alexbescond/ka-website-mediation) : Astro statique avec endpoints Worker, TypeScript, `wrangler.jsonc`, Node 24, D1, R2, génération de types, Playwright et GitHub Actions. Les ressources de ce projet doivent rester séparées de celles du site de médiation.
 
 ## Ressources
@@ -144,7 +148,7 @@ Avec le fichier source `wrangler.jsonc`, `--env production` sélectionne déjà 
 
 Finaliser le vendeur, les conditions, le format/nombre de pages, les délais, les taxes, les modalités de réclamation, le contact confidentialité et l’organisation de la fabrication. Puis configurer un webhook de production avec les secrets de production, `CHECKOUT_MODE=live`. Le marqueur `LEGAL_APPROVED` reste indépendant de cette activation technique. Ne passer `SITE_INDEXABLE=true` qu’à l’ouverture publique.
 
-Ces réglages se font dans `env.production`, avec les secrets sur **mt-main-production** (`--env production`). Configurer aussi les notifications Resend : domaine expéditeur vérifié, secret Worker `RESEND_API_KEY`, `EMAIL_FROM=no-reply@les-aventures-de-doudou-tetine.com`, `EMAIL_REPLY_TO` et `EMAIL_ENABLED=true`. Voir [le guide des notifications](docs/TRACKING.md#activer-les-e-mails-resend). Le contrôle de déploiement live exige la clé Resend et les deux crons `17 3 * * *` (rétention) et `*/5 * * * *` (notifications). Le Worker démo encore déployé n’a aucun cron ; la configuration source prépare les deux crons de production. Le staging conserve seulement celui de rétention ; vérifier le quota de crons du compte avant activation. L’ouverture publique d’Access est une décision distincte d’un déploiement.
+Ces réglages se font dans `env.production`, avec les secrets sur **mt-main-production** (`--env production`). Configurer aussi les notifications Resend : domaine expéditeur vérifié, secret Worker `RESEND_API_KEY`, `EMAIL_FROM=no-reply@les-aventures-de-doudou-tetine.com`, `EMAIL_REPLY_TO` et `EMAIL_ENABLED=true`. Voir [le guide des notifications](docs/TRACKING.md#activer-les-e-mails-resend). Le contrôle de déploiement exige la clé Resend et le cron partagé `*/5 * * * *` lorsque les e-mails sont activés. Il traite les notifications toutes les cinq minutes et la rétention chaque jour à 03:15 UTC. Le staging configure également ce cron pour envoyer les confirmations, les notifications d’expédition et les nouveaux liens des commandes Stripe de test ; les objets sont préfixés « [TEST] ». L’ouverture publique d’Access est une décision distincte d’un déploiement.
 
 Le contrôle de déploiement vérifie la présence des noms de secrets, pas leur validité ni le contenu juridique. La conformité, la fabrication et la livraison demandent une validation humaine.
 

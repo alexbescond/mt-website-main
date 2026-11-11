@@ -541,7 +541,6 @@
   "Où en est votre commande ?": "Wie geht es mit Ihrer Bestellung weiter?",
   "Votre page de suivi récapitule les cartes déjà expédiées et, s’il en reste à envoyer, la date prévue du prochain envoi.": "Ihre Tracking-Seite zeigt bereits verschickte Karten und gegebenenfalls den geplanten nächsten Versandtermin.",
   "Nous espérons qu’elle fera plaisir à votre enfant.": "Wir hoffen, dass sie Ihrem Kind Freude macht.",
-  "Voici le lien demandé pour suivre votre commande. Il est valable 30 jours.": "Hier ist Ihr angeforderter Tracking-Link. Er ist 30 Tage gültig.",
   "ACCÈS AU SUIVI": "ZUGANG ZUR SENDUNGSVERFOLGUNG",
   "est prêt.": "ist bereit.",
   "Vous avez demandé à accéder au suivi de votre commande. Utilisez le lien ci-dessous : aucun compte n’est nécessaire.": "Sie haben Zugang zur Sendungsverfolgung angefordert. Nutzen Sie den Link unten, ohne Kundenkonto.",
@@ -560,7 +559,6 @@
   "Nous préparons toutes vos cartes pour les expédier ensemble, dans un seul envoi. Vous recevrez un e-mail au moment de l’expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "Wir bereiten alle Karten für den gemeinsamen Versand vor. Sie erhalten beim Versand eine E-Mail; die Zustellung hängt anschließend vom Postdienst ab.",
   "Nous commençons par préparer la première carte. Si vous en avez commandé plusieurs, les suivantes seront expédiées à {0} jours d’intervalle. Vous recevrez un e-mail à chaque expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "Wir beginnen mit der ersten Karte. Bei mehreren Karten folgen die weiteren im Abstand von {0} Tagen. Sie erhalten bei jedem Versand eine E-Mail; die Zustellung hängt danach vom Postdienst ab.",
   "Nous espérons que ces cartes deviendront de beaux souvenirs de famille.": "Wir hoffen, dass diese Karten zu schönen Familienerinnerungen werden.",
-  "Ce lien est personnel et valable 30 jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "Dieser persönliche Link ist 30 Tage gültig. Geben Sie ihn nicht weiter: Er ermöglicht den Zugriff auf Ihre Sendungsverfolgung.",
   "Votre lien a expiré ? Demandez-en un nouveau depuis la page de suivi, avec votre adresse e-mail et votre référence de commande.": "Ist Ihr Link abgelaufen? Fordern Sie auf der Tracking-Seite mit E-Mail-Adresse und Bestellnummer einen neuen an.",
   "À bientôt,": "Bis bald,",
   "Des cartes à recevoir, à relire et à garder.": "Karten zum Empfangen, Wiederlesen und Aufbewahren.",
@@ -648,5 +646,7 @@
   "Et si son doudou ou sa tétine avait mille choses à lui raconter ? De vraies cartes postales où": "Was, wenn das Kuscheltier oder der Schnuller tausend Geschichten zu erzählen hätte? Echte Postkarten, auf denen",
   "{0} cartes sur {1} expédiées": "{0} von {1} Karten verschickt",
   "{0} carte sur {1} expédiée": "{0} von {1} Karten verschickt",
-  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Ihre Sprachwahl wird ein Jahr lang in einem Einstellungs-Cookie gespeichert. Es wird nicht für Werbetracking verwendet."
+  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Ihre Sprachwahl wird ein Jahr lang in einem Einstellungs-Cookie gespeichert. Es wird nicht für Werbetracking verwendet.",
+  "Voici le lien demandé pour suivre votre commande. Il est valable {0} jours.": "Hier ist Ihr angeforderter Tracking-Link. Er ist {0} Tage gültig.",
+  "Ce lien est personnel et valable {0} jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "Dieser persönliche Link ist {0} Tage gültig. Geben Sie ihn nicht weiter: Er ermöglicht den Zugriff auf Ihre Sendungsverfolgung."
 }

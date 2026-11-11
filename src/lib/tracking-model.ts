@@ -1,6 +1,8 @@
 import { adventurePreview, adventures, isAdventureId, type CompanionId, type DeliveryMode } from "./catalog";
 import { localeTags, type Locale } from "./i18n/core";
 
+export const TRACKING_LINK_DAYS = 90;
+
 export const cardStates = {
   queued: "À venir",
   preparing: "En préparation",

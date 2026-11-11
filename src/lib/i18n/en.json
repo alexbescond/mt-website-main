@@ -541,7 +541,6 @@
   "Où en est votre commande ?": "How is your order progressing?",
   "Votre page de suivi récapitule les cartes déjà expédiées et, s’il en reste à envoyer, la date prévue du prochain envoi.": "Your tracking page lists the cards already posted and, if any remain, the planned date of the next dispatch.",
   "Nous espérons qu’elle fera plaisir à votre enfant.": "We hope it brings your child joy.",
-  "Voici le lien demandé pour suivre votre commande. Il est valable 30 jours.": "Here is the tracking link you requested. It is valid for 30 days.",
   "ACCÈS AU SUIVI": "TRACKING ACCESS",
   "est prêt.": "is ready.",
   "Vous avez demandé à accéder au suivi de votre commande. Utilisez le lien ci-dessous : aucun compte n’est nécessaire.": "You requested access to your order tracking. Use the link below: no account is needed.",
@@ -560,7 +559,6 @@
   "Nous préparons toutes vos cartes pour les expédier ensemble, dans un seul envoi. Vous recevrez un e-mail au moment de l’expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "We’re preparing all your cards to send together in one delivery. You’ll receive an email when they’re posted; arrival then depends on the postal service.",
   "Nous commençons par préparer la première carte. Si vous en avez commandé plusieurs, les suivantes seront expédiées à {0} jours d’intervalle. Vous recevrez un e-mail à chaque expédition ; le délai de réception dépend ensuite de l’acheminement postal.": "We’ll start by preparing the first card. If you ordered more than one, the others will be posted {0} days apart. You’ll receive an email at each dispatch; arrival then depends on the postal service.",
   "Nous espérons que ces cartes deviendront de beaux souvenirs de famille.": "We hope these cards become lovely family memories.",
-  "Ce lien est personnel et valable 30 jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "This personal link is valid for 30 days. Keep it private: it gives access to your order tracking.",
   "Votre lien a expiré ? Demandez-en un nouveau depuis la page de suivi, avec votre adresse e-mail et votre référence de commande.": "Has your link expired? Request a new one on the tracking page using your email address and order reference.",
   "À bientôt,": "See you soon,",
   "Des cartes à recevoir, à relire et à garder.": "Cards to receive, read again and treasure.",
@@ -648,5 +646,7 @@
   "Et si son doudou ou sa tétine avait mille choses à lui raconter ? De vraies cartes postales où": "What if their cuddly toy or dummy had a thousand stories to tell? Real postcards where",
   "{0} cartes sur {1} expédiées": "{0} of {1} cards dispatched",
   "{0} carte sur {1} expédiée": "{0} of {1} cards dispatched",
-  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Your language choice is remembered for one year in a preference cookie. It is not used for advertising tracking."
+  "Votre choix de langue est mémorisé pendant un an dans un cookie de préférence. Il ne sert pas au suivi publicitaire.": "Your language choice is remembered for one year in a preference cookie. It is not used for advertising tracking.",
+  "Voici le lien demandé pour suivre votre commande. Il est valable {0} jours.": "Here is the tracking link you requested. It is valid for {0} days.",
+  "Ce lien est personnel et valable {0} jours. Gardez-le pour vous : il donne accès au suivi de votre commande.": "This personal link is valid for {0} days. Keep it private: it gives access to your order tracking."
 }
