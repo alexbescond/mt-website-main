@@ -72,13 +72,16 @@ if (config.vars.CHECKOUT_MODE !== "demo") {
   assert(result.status === 0, "Cannot verify deployed secret names.");
   const secrets = JSON.parse(result.stdout);
   const requiredSecrets = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "ADMIN_PASSWORD", "TRACKING_LINK_SECRET"];
-  if (config.vars.CHECKOUT_MODE === "live") requiredSecrets.push("RESEND_API_KEY");
+  if (config.vars.EMAIL_ENABLED === "true") requiredSecrets.push("RESEND_API_KEY");
   const missing = requiredSecrets.filter(key => !secrets.some(s => s.name === key));
   assert(!missing.length, `Missing Worker secrets: ${missing.join(", ")}`);
 }
 if (config.vars.CHECKOUT_MODE === "live") {
-  assert(["17 3 * * *", "*/5 * * * *"].every(cron => config.triggers?.crons?.includes(cron)), "Enable photo retention and notification schedules before opening sales.");
   assert(config.vars.EMAIL_ENABLED === "true", "Enable transactional notifications before opening sales.");
+}
+if (config.vars.EMAIL_ENABLED === "true") {
+  assert(config.vars.CHECKOUT_MODE !== "demo", "Email sending requires test or live checkout mode.");
+  assert(config.triggers?.crons?.includes("*/5 * * * *"), "Enable the shared notification and daily cleanup schedule when emails are enabled.");
   assert(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.vars.EMAIL_FROM || ""), "Set EMAIL_FROM to an address on a domain verified in Resend.");
 }
 if (config.vars.CHECKOUT_MODE === "live") {
